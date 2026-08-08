@@ -86,9 +86,35 @@
             </div>
             <input type="text" id="p-name-mob" required placeholder="Nombre del producto" class="input-field uppercase">
             <input type="number" id="p-cost-mob" placeholder="Costo proveedor ($)" class="input-field">
+            
             <select id="p-cat-mob" class="select-field">
-                <option>Abarrotes</option><option>Refrescos</option><option>Sabritas</option><option>Galletas</option><option>Cigarros</option><option>Lácteos</option><option>Otros</option>
+                <optgroup label="Bebidas y Licores">
+                    <option>Refrescos</option>
+                    <option>Alcohol</option>
+                </optgroup>
+                <optgroup label="Alimentos y Botanas">
+                    <option>Sabritas</option>
+                    <option>Galletas</option>
+                    <option>Frutas</option>
+                    <option>Lácteos</option>
+                    <option>Alimentos</option>
+                    <option>Dulces</option>
+                    <option>Especias</option>
+                </optgroup>
+                <optgroup label="Higiene y Hogar">
+                    <option>Higiene</option>
+                    <option>Limpieza</option>
+                </optgroup>
+                <optgroup label="Otros Departamentos">
+                    <option>Cigarros</option>
+                    <option>Ferretería</option>
+                    <option>Celular</option>
+                    <option>Eléctrico</option>
+                    <option>Farmacia</option>
+                    <option>Otros</option>
+                </optgroup>
             </select>
+
             <select id="p-type-mob" onchange="toggleConfigMobile()" class="select-field">
                 <option value="pieza">Venta por Pieza Normal</option><option value="granel">Venta a Granel (Kilos)</option><option value="cajetilla">Cigarros (Cajetilla / Sueltos)</option>
             </select>
@@ -122,7 +148,6 @@
         <div class="bg-white rounded-3xl w-full max-w-sm p-4 shadow-2xl relative flex flex-col">
             <button onclick="closeScannerMobile()" class="absolute -top-3 -right-3 bg-red-500 text-white rounded-full w-10 h-10 font-bold text-xl shadow-lg border-2 border-white z-50">✕</button>
             <h3 class="text-center font-bold mb-3 text-gray-800 text-lg">Enfoca el Código</h3>
-            <!-- CAMBIO AQUÍ: altura fija más alta -->
             <div class="relative rounded-2xl overflow-hidden h-[300px] bg-gray-100 flex items-center justify-center">
                 <div id="reader" class="w-full h-full absolute inset-0"></div>
                 <div class="absolute inset-0 border-[4px] border-transparent pointer-events-none z-10 flex items-center justify-center">
@@ -191,7 +216,7 @@
                 if (!html5QrCode) html5QrCode = new Html5Qrcode("reader");
                 html5QrCode.start({ facingMode: "environment" }, { 
                     fps: 10, 
-                    qrbox: { width: 250, height: 250 } // CAMBIO AQUÍ: Más fácil de enfocar
+                    qrbox: { width: 250, height: 250 }
                 }, (decodedText) => {
                     closeScannerMobile();
                     if (context === 'pos') {
@@ -217,7 +242,7 @@
         function saveProductMobile() {
             const name = document.getElementById('p-name-mob').value.trim();
             if(!name) return Swal.fire('Atención', 'Nombre obligatorio', 'warning');
-            const newProduct = { id: Date.now(), code: document.getElementById('p-code-mob').value.trim(), name: name.toUpperCase(), type: document.getElementById('p-type-mob').value, price: parseFloat(document.getElementById('p-price-main-mob').value) || 0, stock: parseFloat(document.getElementById('p-stock-mob').value) || 0 };
+            const newProduct = { id: Date.now(), code: document.getElementById('p-code-mob').value.trim(), name: name.toUpperCase(), category: document.getElementById('p-cat-mob').value, type: document.getElementById('p-type-mob').value, price: parseFloat(document.getElementById('p-price-main-mob').value) || 0, stock: parseFloat(document.getElementById('p-stock-mob').value) || 0 };
             dbRef.once('value').then(snap => { const data = snap.val() || { products: [] }; data.products.push(newProduct); dbRef.set(data); Swal.fire('Guardado', '', 'success'); });
         }
         
