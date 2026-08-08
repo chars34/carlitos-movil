@@ -14,25 +14,27 @@
         body { font-family: system-ui, -apple-system, sans-serif; background: #f3f4f6; margin: 0; padding-bottom: 80px; touch-action: manipulation; }
         .header { background: #dc2626; color: white; padding: 16px; text-align: center; font-weight: bold; font-size: 22px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 50; }
         .btn-cart { background: #1f2937; color: white; padding: 14px; border-radius: 16px; font-weight: bold; display: flex; align-items: center; gap: 10px; justify-content: center; margin: 10px 15px; }
-        .product-card { background: white; border-radius: 12px; padding: 12px 16px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #e5e7eb; }
+        .product-card { background: white; border-radius: 12px; padding: 12px 16px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #e5e7eb; transition: transform 0.1s; }
+        .product-card:active { transform: scale(0.98); }
         .cart-item { background: white; border-radius: 12px; padding: 10px 15px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; border-left: 4px solid #dc2626; }
         .bottom-nav { position: fixed; bottom: 0; left: 0; width: 100%; background: white; display: flex; border-top: 1px solid #e5e7eb; box-shadow: 0 -2px 10px rgba(0,0,0,0.05); z-index: 50; }
         .bottom-nav button { flex: 1; padding: 12px 0; font-weight: bold; color: #6b7280; text-align: center; transition: 0.2s; }
         .bottom-nav button.active { color: #dc2626; border-top: 3px solid #dc2626; background: #fef2f2; }
-        .hidden-view { display: none; }
+        .hidden-view { display: none !important; }
         .search-input { width: 100%; padding: 12px 16px; border-radius: 30px; border: 1px solid #d1d5db; font-size: 16px; background: white; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02); }
-        .btn-cobrar { background: #10b981; color: white; padding: 16px; border-radius: 16px; font-weight: bold; text-align: center; margin: 10px 15px; }
+        .btn-cobrar { background: #10b981; color: white; padding: 16px; border-radius: 16px; font-weight: bold; text-align: center; margin: 10px 0; }
         .input-field { width: 100%; border: 1px solid #d1d5db; padding: 12px 16px; border-radius: 12px; font-size: 16px; background: white; margin-bottom: 10px; }
         .select-field { width: 100%; border: 1px solid #d1d5db; padding: 12px 16px; border-radius: 12px; font-size: 16px; background: white; margin-bottom: 10px; }
         
-        /* Estilos para el lector de código de barras */
-        #reader { width: 100%; max-width: 400px; margin: 0 auto; background: #000; border-radius: 16px; overflow: hidden; }
-        #scanner-modal { background: rgba(0,0,0,0.8); z-index: 999; }
+        /* Estilos Lector QR/Barras */
+        #reader { width: 100%; background: #000; border-radius: 16px; overflow: hidden; border: none; }
+        #reader video { object-fit: cover; }
+        #scanner-modal { background: rgba(0,0,0,0.85); z-index: 9999; backdrop-filter: blur(4px); }
         .input-group { display: flex; gap: 10px; align-items: center; }
         .input-group .input-field { flex: 1; margin-bottom: 0; }
         .btn-scan { background: #1f2937; color: white; width: 50px; height: 50px; border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
         
-        /* Estilo del bloque amarillo de configuración */
+        /* Configuración de Paquetes */
         .config-box { background: #fffbeb; border: 1px solid #fde68a; border-radius: 16px; padding: 16px; margin-bottom: 15px; }
         .config-box .title { font-size: 12px; font-weight: 800; color: #92400e; text-transform: uppercase; border-bottom: 1px solid #fde68a; padding-bottom: 8px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
         .config-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
@@ -49,28 +51,28 @@
     <!-- HEADER -->
     <div class="header">🛒 Mini Super Carlitos</div>
 
-    <!-- VISTA CAJA (PREDETERMINADA) -->
+    <!-- VISTA CAJA -->
     <div id="view-caja" class="p-4">
         <div class="flex gap-2 mb-4 items-center">
             <button onclick="openScannerMobile('pos')" class="bg-gray-800 text-white w-12 h-12 rounded-full flex items-center justify-center shadow-md shrink-0">
-                <i class="fas fa-camera text-lg"></i>
+                <i class="fas fa-barcode text-lg"></i>
             </button>
-            <input type="text" id="search-mobile" oninput="searchMobile(this.value)" placeholder="🔍 Buscar producto..." class="search-input flex-1">
+            <input type="text" id="search-mobile" oninput="searchMobile(this.value)" placeholder="🔍 Buscar nombre o código..." class="search-input flex-1">
         </div>
 
-        <!-- GRID DE PRODUCTOS -->
-        <div id="product-list-mobile" class="space-y-2"></div>
+        <!-- GRID DE PRODUCTOS BUSCADOS -->
+        <div id="product-list-mobile" class="space-y-2 max-h-60 overflow-y-auto"></div>
 
         <!-- CARRITO -->
-        <div style="background: white; border-radius: 16px; padding: 16px; margin-top: 20px; box-shadow: 0 -4px 10px rgba(0,0,0,0.05);">
+        <div style="background: white; border-radius: 16px; padding: 16px; margin-top: 10px; box-shadow: 0 -4px 10px rgba(0,0,0,0.05);">
             <div class="flex justify-between items-center mb-2">
                 <span class="font-bold text-lg">🛒 Carrito</span>
-                <button onclick="clearCartMobile()" class="text-red-500 text-sm font-bold">Vaciar</button>
+                <button onclick="clearCartMobile()" class="text-red-500 text-sm font-bold bg-red-50 px-3 py-1 rounded-lg">Vaciar</button>
             </div>
-            <div id="cart-list-mobile" class="mb-4 min-h-[60px]">
-                <p class="text-gray-400 text-center text-sm">Agrega productos aquí</p>
+            <div id="cart-list-mobile" class="mb-4 min-h-[100px] max-h-64 overflow-y-auto">
+                <p class="text-gray-400 text-center text-sm py-8">Aún no hay productos en el carrito</p>
             </div>
-            <div class="flex justify-between font-black text-xl mb-2 border-t pt-2">
+            <div class="flex justify-between font-black text-xl mb-2 border-t pt-4">
                 <span>Total</span>
                 <span id="total-mobile" class="text-red-600">$0.00</span>
             </div>
@@ -85,48 +87,48 @@
         <div class="bg-white rounded-2xl p-4 shadow-sm mb-4">
             <h3 class="font-bold text-lg mb-3">📦 Registrar Producto</h3>
             
-            <!-- CAMPO DE CÓDIGO CON BOTÓN DE CÁMARA -->
             <div class="input-group mb-3">
-                <input type="text" id="p-code-mob" placeholder="Código de Barras" class="input-field">
+                <input type="text" id="p-code-mob" placeholder="Código de Barras (opcional)" class="input-field">
                 <button onclick="openScannerMobile('register')" class="btn-scan shadow-sm">
-                    <i class="fas fa-camera text-lg"></i>
+                    <i class="fas fa-barcode text-lg"></i>
                 </button>
             </div>
 
-            <input type="text" id="p-name-mob" required placeholder="Nombre del producto" class="input-field">
-            <input type="number" id="p-cost-mob" placeholder="Costo ($)" class="input-field">
+            <input type="text" id="p-name-mob" required placeholder="Nombre del producto" class="input-field uppercase">
+            <input type="number" id="p-cost-mob" placeholder="Costo proveedor ($)" class="input-field">
             
             <select id="p-cat-mob" class="select-field">
+                <option>Abarrotes</option>
                 <option>Refrescos</option>
                 <option>Sabritas</option>
                 <option>Galletas</option>
                 <option>Cigarros</option>
+                <option>Lácteos</option>
                 <option>Otros</option>
             </select>
             
             <select id="p-type-mob" onchange="toggleConfigMobile()" class="select-field">
-                <option value="pieza">Por Pieza</option>
-                <option value="granel">Por kilos</option>
-                <option value="cajapieza">Caja / Pieza</option>
-                <option value="cajetilla">Cajetilla / Cigarro</option>
+                <option value="pieza">Venta por Pieza Normal</option>
+                <option value="granel">Venta a Granel (Kilos)</option>
+                <option value="cajapieza">Venta Caja / Pieza suelta</option>
+                <option value="cajetilla">Cajetilla / Cigarro suelto</option>
             </select>
 
-            <!-- BLOQUE DE CONFIGURACIÓN DINÁMICO (El cuadro amarillo) -->
+            <!-- BLOQUE DINÁMICO (CAJAS/CAJETILLAS) -->
             <div id="mixed-fields-mob" class="hidden config-box">
                 <div class="title"><i class="fas fa-boxes"></i> Configuración de <span id="mixed-label-title-mob">Paquete</span></div>
                 
                 <div id="mixed-price-fields-mob" class="config-grid">
-                    <!-- Precio Caja / Cajetilla -->
-                    <div class="price-wrapper">
+                    <div class="price-wrapper" id="wrap-price-box">
+                        <label class="config-label">Precio x Caja</label>
                         <span>$</span>
-                        <input type="number" id="p-price-mob" step="0.01" placeholder="0.00" class="config-input price">
+                        <input type="number" id="p-price-box-mob" step="0.01" placeholder="0.00" class="config-input price">
                     </div>
-                    <!-- Precio Pieza / Cigarro -->
-                    <div class="price-wrapper">
+                    <div class="price-wrapper" id="wrap-price-piece">
+                        <label class="config-label">Precio x Pieza</label>
                         <span>$</span>
                         <input type="number" id="p-piece-price-mob" step="0.01" placeholder="0.00" class="config-input price">
                     </div>
-                    <!-- Piezas por Caja / Cigarros x Cajetilla -->
                     <div class="full">
                         <label class="config-label"><span id="mixed-label-per-box-mob">Piezas x Caja</span></label>
                         <input type="number" id="p-pieces-per-box-mob" min="1" placeholder="24" value="24" class="config-input">
@@ -145,16 +147,28 @@
                 </div>
             </div>
 
-            <input type="number" id="p-price-mob" required placeholder="Precio Venta ($)" class="input-field">
-            <input type="number" id="p-stock-mob" placeholder="Stock (piezas)" class="input-field">
+            <!-- PRECIO Y STOCK NORMALES -->
+            <div id="normal-fields-mob">
+                <input type="number" id="p-price-main-mob" required placeholder="Precio Venta ($)" class="input-field">
+                <input type="number" id="p-stock-mob" placeholder="Stock actual (piezas)" class="input-field">
+            </div>
             
-            <button onclick="saveProductMobile()" class="w-full bg-blue-600 text-white p-4 rounded-xl font-bold shadow-lg">
+            <button onclick="saveProductMobile()" class="w-full bg-blue-600 text-white p-4 rounded-xl font-bold shadow-lg mt-2">
                 <i class="fas fa-save"></i> Guardar Producto
             </button>
         </div>
     </div>
 
-
+    <!-- MODAL DEL ESCÁNER -->
+    <div id="scanner-modal" class="hidden-view fixed inset-0 flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl w-full max-w-sm p-4 shadow-2xl relative flex flex-col">
+            <button onclick="closeScannerMobile()" class="absolute -top-3 -right-3 bg-red-500 text-white rounded-full w-10 h-10 font-bold text-xl shadow-lg border-2 border-white z-50">✕</button>
+            <h3 class="text-center font-bold mb-3 text-gray-800 text-lg">Enfoca el Código de Barras</h3>
+            <div id="reader" class="rounded-2xl overflow-hidden aspect-square flex items-center justify-center bg-gray-100">
+                <div class="animate-pulse text-gray-400">Iniciando cámara...</div>
+            </div>
+        </div>
+    </div>
 
     <!-- NAVEGADOR INFERIOR -->
     <div class="bottom-nav">
@@ -163,7 +177,7 @@
     </div>
 
     <script>
-        // 🔥 CONFIGURACIÓN DE FIREBASE
+        // CONFIGURACIÓN DE FIREBASE
         const firebaseConfig = {
             apiKey: "AIzaSyA1mBLI8HYE5vrjtC0yiGgij2zvocfckac",
             authDomain: "tiendacarlitos-a5b1d.firebaseapp.com",
@@ -175,21 +189,18 @@
             measurementId: "G-RKZJMETTW7"
         };
         
-        // Inicializar Firebase
         firebase.initializeApp(firebaseConfig);
         const dbRef = firebase.database().ref('miniSuperDb');
 
         let products = [];
         let cart = [];
         let html5QrCode = null;
-        let isFirstLoad = true; // 🛑 Bandera de control
 
-        // 🔄 CONEXIÓN EN TIEMPO REAL A FIREBASE
+        // CONEXIÓN EN TIEMPO REAL A FIREBASE
         dbRef.on('value', (snapshot) => {
             const data = snapshot.val();
             if (data && data.products) {
                 products = data.products;
-                // SOLO actualizamos el carrito, NO la lista de productos
                 renderCartMobile();
             }
         });
@@ -201,56 +212,60 @@
             document.getElementById('btn-registro').classList.toggle('active', view === 'registro');
         }
 
-        // 🔍 BÚSQUEDA
+        // BÚSQUEDA MANUAL
         function searchMobile(query) {
             const q = query.toLowerCase().trim();
             const container = document.getElementById('product-list-mobile');
             
-            // 🛑 Si la barra está vacía, limpiamos la lista y NO mostramos nada
             if (q === '') {
                 container.innerHTML = '';
                 return;
             }
 
-            const filtered = products.filter(p => p.name.toLowerCase().includes(q) || (p.code && p.code.toLowerCase().includes(q)));
+            const filtered = products.filter(p => p.name.toLowerCase().includes(q) || (p.code && p.code.toLowerCase() === q));
             
             if(filtered.length === 0) {
-                container.innerHTML = '<p class="text-center text-gray-400 py-10">No encontrado</p>';
+                container.innerHTML = '<p class="text-center text-gray-400 py-6 bg-white rounded-xl">No se encontró el producto</p>';
                 return;
             }
             
             container.innerHTML = filtered.map(p => `
-                <div onclick="addToCartMobile(${p.id})" class="product-card cursor-pointer active:scale-95 transition-transform">
+                <div onclick="addToCartMobile(${p.id})" class="product-card cursor-pointer">
                     <div>
                         <span class="font-bold text-sm block">${p.name}</span>
-                        <span class="text-xs text-gray-500">Stock: ${p.stock}</span>
+                        <span class="text-xs text-gray-500">Disp: ${p.stock}</span>
                     </div>
-                    <span class="font-black text-red-600">$${Number(p.price).toFixed(2)}</span>
+                    <span class="font-black text-blue-600">$${Number(p.price).toFixed(2)}</span>
                 </div>
             `).join('');
         }
 
-        // 🛒 AGREGAR AL CARRITO
+        // AGREGAR AL CARRITO
         function addToCartMobile(id) {
             const product = products.find(p => p.id === id);
-            if (!product || product.stock <= 0) return Swal.fire('Sin stock', 'No hay unidades', 'warning');
+            if (!product || product.stock <= 0) return Swal.fire('Sin stock', 'No hay unidades de este producto', 'warning');
 
-            if (product.category === 'Cigarros' && (product.type === 'mixto' || product.type === 'cajetilla')) {
+            // Si es un producto con tipos de venta especiales
+            if (product.type === 'cajetilla' || product.type === 'cajapieza') {
                 const piecePrice = product.piecePrice || 0;
                 const boxPrice = product.price || 0;
-                const ppb = product.piecesPerBox || 20;
+                const isCigar = product.type === 'cajetilla' || product.category === 'Cigarros';
+                
+                const btnBox = isCigar ? '📦 Cajetilla' : '📦 Caja Completa';
+                const btnPiece = isCigar ? '🚬 Cigarro Suelto' : '🍬 Pieza Suelta';
 
                 Swal.fire({
                     title: product.name,
-                    html: `¿Cajetilla ($${boxPrice}) o Cigarro ($${piecePrice})?`,
+                    html: `Elige cómo venderlo:`,
                     showDenyButton: true, showCancelButton: true,
-                    confirmButtonText: `📦 Cajetilla`,
-                    denyButtonText: `🚬 Cigarro`,
-                    cancelButtonText: 'Cancelar'
+                    confirmButtonText: `${btnBox} ($${boxPrice})`,
+                    denyButtonText: `${btnPiece} ($${piecePrice})`,
+                    cancelButtonText: 'Cancelar',
+                    customClass: { confirmButton: 'bg-blue-600', denyButton: 'bg-green-600' }
                 }).then(res => {
                     if (res.isConfirmed) {
-                        const exist = cart.find(c => c.id === product.id && c.sellType === 'Cajetilla');
-                        if(exist) { exist.qty++; } else { cart.push({ ...product, qty: 1, price: boxPrice, sellType: 'Cajetilla', name: `${product.name} (Cajetilla)` }); }
+                        const exist = cart.find(c => c.id === product.id && c.sellType === 'Caja');
+                        if(exist) { exist.qty++; } else { cart.push({ ...product, qty: 1, price: boxPrice, sellType: 'Caja', name: `${product.name} (Caja)` }); }
                         renderCartMobile();
                     } else if (res.isDenied) {
                         const exist = cart.find(c => c.id === product.id && c.sellType === 'Suelto');
@@ -261,8 +276,13 @@
                 return;
             }
 
+            // Producto Normal
             const exist = cart.find(c => c.id === id && !c.sellType);
             if(exist) { exist.qty++; } else { cart.push({ ...product, qty: 1 }); }
+            
+            // Limpiar búsqueda si se agregó correctamente
+            document.getElementById('search-mobile').value = '';
+            document.getElementById('product-list-mobile').innerHTML = '';
             renderCartMobile();
         }
 
@@ -272,7 +292,7 @@
             let total = 0;
 
             if(cart.length === 0) {
-                container.innerHTML = '<p class="text-gray-400 text-center text-sm">Agrega productos aquí</p>';
+                container.innerHTML = '<p class="text-gray-400 text-center text-sm py-8">Aún no hay productos en el carrito</p>';
                 totalSpan.innerText = '$0.00';
                 return;
             }
@@ -281,18 +301,18 @@
                 const sub = item.price * item.qty;
                 total += sub;
                 return `
-                    <div class="cart-item">
-                        <div>
-                            <div class="font-bold text-sm">${item.name}</div>
-                            <div class="flex items-center gap-2 mt-1">
-                                <button onclick="changeQtyMobile('${item.id}', -1, '${item.sellType || ''}')" class="bg-gray-200 w-6 h-6 rounded flex items-center justify-center text-xs">-</button>
-                                <span class="w-6 text-center font-bold text-xs">${item.qty}</span>
-                                <button onclick="changeQtyMobile('${item.id}', 1, '${item.sellType || ''}')" class="bg-gray-200 w-6 h-6 rounded flex items-center justify-center text-xs">+</button>
+                    <div class="cart-item shadow-sm">
+                        <div class="flex-1">
+                            <div class="font-bold text-sm text-gray-800">${item.name}</div>
+                            <div class="flex items-center gap-3 mt-2">
+                                <button onclick="changeQtyMobile('${item.id}', -1, '${item.sellType || ''}')" class="bg-gray-100 text-gray-800 w-8 h-8 rounded-full flex items-center justify-center font-bold text-lg active:bg-gray-300">-</button>
+                                <span class="w-4 text-center font-bold text-sm">${item.qty}</span>
+                                <button onclick="changeQtyMobile('${item.id}', 1, '${item.sellType || ''}')" class="bg-blue-100 text-blue-800 w-8 h-8 rounded-full flex items-center justify-center font-bold text-lg active:bg-blue-300">+</button>
                             </div>
                         </div>
-                        <div class="text-right">
-                            <span class="font-black text-red-600 text-sm">$${sub.toFixed(2)}</span>
-                            <br><button onclick="removeItemMobile('${item.id}', '${item.sellType || ''}')" class="text-red-400 text-[10px]">Eliminar</button>
+                        <div class="text-right ml-4">
+                            <span class="font-black text-gray-800 text-base block">$${sub.toFixed(2)}</span>
+                            <button onclick="removeItemMobile('${item.id}', '${item.sellType || ''}')" class="text-red-500 font-bold text-xs mt-2 bg-red-50 px-2 py-1 rounded">Eliminar</button>
                         </div>
                     </div>
                 `;
@@ -315,26 +335,34 @@
 
         function clearCartMobile() { cart = []; renderCartMobile(); }
 
-        // 💵 COBRAR
+        // COBRAR
         function openCheckoutMobile() {
-            if(cart.length === 0) return Swal.fire('Carrito vacío', 'Agrega productos', 'warning');
+            if(cart.length === 0) return Swal.fire('Carrito vacío', 'Escanea o busca productos primero.', 'warning');
             const total = cart.reduce((acc, i) => acc + (i.price * i.qty), 0);
             
             Swal.fire({
-                title: `Total: $${total.toFixed(2)}`,
+                title: `Cobrar $${total.toFixed(2)}`,
                 input: 'number',
-                inputLabel: 'Efectivo recibido',
-                inputPlaceholder: '$',
+                inputLabel: '¿Con cuánto paga el cliente?',
+                inputPlaceholder: '0.00',
                 showCancelButton: true,
-                confirmButtonText: 'Confirmar',
+                confirmButtonText: 'Completar Venta',
+                cancelButtonText: 'Cancelar',
+                customClass: { confirmButton: 'bg-green-600 text-white font-bold', input: 'text-center text-2xl font-black' },
                 preConfirm: (received) => {
-                    if(parseFloat(received) < total) return Swal.showValidationMessage('Falta dinero');
-                    return parseFloat(received);
+                    const parsed = parseFloat(received);
+                    if(!parsed || parsed < total) return Swal.showValidationMessage('El monto es menor al total');
+                    return parsed;
                 }
             }).then(res => {
                 if(res.isConfirmed) {
                     const change = res.value - total;
-                    Swal.fire(`✅ Venta completada`, `Cambio: $${change.toFixed(2)}`, 'success');
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Venta Exitosa',
+                        html: `<div class="text-xl">Su cambio: <b class="text-green-600 text-3xl block mt-2">$${change.toFixed(2)}</b></div>`,
+                        confirmButtonText: 'Aceptar'
+                    });
                     finalizeSaleMobile(total);
                 }
             });
@@ -346,39 +374,50 @@
                 
                 cart.forEach(item => {
                     const prod = data.products.find(p => p.id === item.id);
-                    if(prod) prod.stock -= item.qty;
+                    if(prod) {
+                        if(item.sellType === 'Suelto') {
+                            prod.stock -= (1 / (prod.piecesPerBox || 1));
+                        } else {
+                            prod.stock -= item.qty;
+                        }
+                    }
                 });
 
                 data.dailySales = (data.dailySales || 0) + total;
                 if(!data.salesHistory) data.salesHistory = [];
-                data.salesHistory.push({ date: new Date().toISOString(), total, items: cart, seller: 'Móvil' });
+                data.salesHistory.push({ date: new Date().toISOString(), total, items: cart, seller: 'Caja Móvil' });
 
                 dbRef.set(data);
-                cart = [];
-                renderCartMobile();
+                clearCartMobile();
             });
         }
 
-        // 📦 REGISTRAR PRODUCTO (CON MULTIPLICACIÓN Y TIPOS)
+        // REGISTRAR PRODUCTO CORREGIDO
         function saveProductMobile() {
             const name = document.getElementById('p-name-mob').value.trim();
-            if(!name) return Swal.fire('Error', 'El nombre es obligatorio', 'warning');
+            if(!name) return Swal.fire('Atención', 'El nombre del producto es obligatorio', 'warning');
             
             const type = document.getElementById('p-type-mob').value;
-            
             let stockVal = 0;
+            let finalPrice = 0;
+            let piecePrice = 0;
+            let piecesPerBox = null;
             
-            // Si es caja o cajetilla, calculamos el stock multiplicando
+            // Lógica según el tipo de producto
             if (type === 'cajapieza' || type === 'cajetilla') {
                 const boxes = parseFloat(document.getElementById('p-stock-boxes-mob').value) || 0;
-                const ppb = parseInt(document.getElementById('p-pieces-per-box-mob').value) || 1;
+                piecesPerBox = parseInt(document.getElementById('p-pieces-per-box-mob').value) || 1;
                 const loose = parseFloat(document.getElementById('p-stock-loose-mob').value) || 0;
                 
-                stockVal = (boxes * ppb) + loose; 
+                stockVal = boxes + (loose / piecesPerBox); // Se guarda en unidades de "Cajas" decimales
+                finalPrice = parseFloat(document.getElementById('p-price-box-mob').value) || 0;
+                piecePrice = parseFloat(document.getElementById('p-piece-price-mob').value) || 0;
             } else {
-                // Para venta por pieza normal o por kilos
                 stockVal = parseFloat(document.getElementById('p-stock-mob').value) || 0;
+                finalPrice = parseFloat(document.getElementById('p-price-main-mob').value) || 0;
             }
+
+            if(finalPrice === 0) return Swal.fire('Error', 'Debes ingresar un precio de venta', 'error');
 
             const newProduct = {
                 id: Date.now(),
@@ -388,134 +427,118 @@
                 type: type,
                 cost: parseFloat(document.getElementById('p-cost-mob').value) || 0,
                 stock: stockVal,
+                price: finalPrice,
+                piecePrice: piecePrice,
+                piecesPerBox: piecesPerBox,
                 expiryDate: null
             };
 
-            // Guardar los precios y configuraciones específicas según el tipo
-            if (type === 'cajetilla' || (type === 'cajapieza' && document.getElementById('p-cat-mob').value === 'Cigarros')) {
-                // Para Cajetilla / Cigarro
-                newProduct.price = parseFloat(document.getElementById('p-price-mob').value) || 0;
-                newProduct.piecePrice = parseFloat(document.getElementById('p-piece-price-mob').value) || 0;
-                newProduct.piecesPerBox = parseInt(document.getElementById('p-pieces-per-box-mob').value) || 20;
-            } else if (type === 'cajapieza') {
-                // Para Caja / Pieza (Solo usamos el precio unitario estándar)
-                newProduct.price = parseFloat(document.getElementById('p-price-mob').value) || 0;
-                newProduct.piecePrice = 0;
-                newProduct.piecesPerBox = parseInt(document.getElementById('p-pieces-per-box-mob').value) || 24;
-            } else {
-                // Por Pieza / Por kilos
-                newProduct.price = parseFloat(document.getElementById('p-price-mob').value) || 0;
-                newProduct.piecePrice = null;
-                newProduct.piecesPerBox = null;
-            }
-
             dbRef.once('value').then(snap => {
                 const data = snap.val() || { products: [] };
+                
+                // Evitar códigos duplicados
+                if(newProduct.code && data.products.some(p => p.code === newProduct.code)) {
+                    return Swal.fire('Error', 'Ese código de barras ya está registrado', 'error');
+                }
+
                 data.products.push(newProduct);
                 dbRef.set(data);
                 
-                Swal.fire('✅ Guardado', 'Producto registrado en la nube', 'success');
-                document.getElementById('p-name-mob').value = '';
-                document.getElementById('p-code-mob').value = '';
-                document.getElementById('p-cost-mob').value = '';
-                document.getElementById('p-price-mob').value = '';
-                document.getElementById('p-stock-mob').value = '';
-                document.getElementById('p-stock-boxes-mob').value = '';
-                document.getElementById('p-stock-loose-mob').value = '';
+                Swal.fire({ icon: 'success', title: 'Guardado', text: 'Producto agregado al inventario', timer: 1500 });
+                
+                // Limpiar formulario
+                document.querySelectorAll('#view-registro input').forEach(input => input.value = '');
+                document.getElementById('p-pieces-per-box-mob').value = '24';
             });
         }
 
-        // 👇 FUNCIÓN PARA MOSTRAR/OCULTAR EL CUADRO AMARILLO (CON CAMBIO DE TEXTOS)
+        // ALTERNAR CAMPOS DINÁMICOS
         function toggleConfigMobile() {
             const type = document.getElementById('p-type-mob').value;
             const mixedFields = document.getElementById('mixed-fields-mob');
+            const normalFields = document.getElementById('normal-fields-mob');
             const cat = document.getElementById('p-cat-mob').value;
 
             if (type === 'cajapieza' || type === 'cajetilla') {
                 mixedFields.classList.remove('hidden');
+                normalFields.classList.add('hidden');
                 
-                // Cambiar textos dinámicamente
                 const title = document.getElementById('mixed-label-title-mob');
-                const labelPriceBox = document.querySelector('#mixed-price-fields-mob div:nth-child(1) .config-label');
-                const labelPiece = document.querySelector('#mixed-price-fields-mob div:nth-child(2) .config-label');
                 const labelPerBox = document.getElementById('mixed-label-per-box-mob');
                 const labelStockBoxes = document.getElementById('mixed-label-stock-boxes-mob');
                 const labelLoose = document.getElementById('mixed-label-loose-mob');
 
                 if (type === 'cajetilla' || (type === 'cajapieza' && cat === 'Cigarros')) {
-                    // Cajetilla / Cigarro
-                    if(title) title.innerText = 'Cajetilla';
-                    if(labelPriceBox) labelPriceBox.innerText = 'Precio x Cajetilla';
-                    if(labelPiece) labelPiece.innerText = 'Precio x Cigarro';
-                    if(labelPerBox) labelPerBox.innerText = 'Cigarros x Cajetilla';
-                    if(labelStockBoxes) labelStockBoxes.innerText = 'Cajetillas';
-                    if(labelLoose) labelLoose.innerText = 'Cigarros Sueltos';
-                    
-                    document.getElementById('p-price-mob').parentElement.parentElement.style.display = 'grid';
-                    document.getElementById('p-piece-price-mob').parentElement.parentElement.style.display = 'grid';
+                    title.innerText = 'Cajetilla';
+                    labelPerBox.innerText = 'Cigarros x Cajetilla';
+                    labelStockBoxes.innerText = 'Cajetillas';
+                    labelLoose.innerText = 'Cigarros Sueltos';
                 } else {
-                    // Caja / Pieza
-                    if(title) title.innerText = 'Paquete';
-                    if(labelPriceBox) labelPriceBox.innerText = 'Precio x Caja';
-                    if(labelPiece) labelPiece.innerText = 'Precio x Pieza';
-                    if(labelPerBox) labelPerBox.innerText = 'Piezas x Caja';
-                    if(labelStockBoxes) labelStockBoxes.innerText = 'Cajas';
-                    if(labelLoose) labelLoose.innerText = 'Piezas Sueltas';
-                    
-                    // Ocultar precios en Caja/Pieza
-                    document.getElementById('p-price-mob').parentElement.parentElement.style.display = 'none';
-                    document.getElementById('p-piece-price-mob').parentElement.parentElement.style.display = 'none';
+                    title.innerText = 'Caja/Paquete';
+                    labelPerBox.innerText = 'Piezas x Caja';
+                    labelStockBoxes.innerText = 'Cajas Cerradas';
+                    labelLoose.innerText = 'Piezas Sueltas';
                 }
             } else {
                 mixedFields.classList.add('hidden');
+                normalFields.classList.remove('hidden');
             }
         }
 
-        // 👇 FUNCIONES DE LA CÁMARA
+        // 👉 LÓGICA DE CÁMARA MEJORADA 👈
         function openScannerMobile(context) {
-            const modal = document.getElementById('scanner-modal');
-            if (!modal) return;
+            // Nota de seguridad: getUserMedia en móviles SOLO funciona bajo conexión segura HTTPS
+            if (window.isSecureContext === false) {
+                return Swal.fire('Cámara bloqueada', 'Tu navegador requiere que la página empiece con HTTPS:// para usar la cámara.', 'error');
+            }
 
+            const modal = document.getElementById('scanner-modal');
             modal.classList.remove('hidden-view');
 
-            if (html5QrCode) {
-                html5QrCode.stop().catch(err => console.error(err));
-            }
-            
-            html5QrCode = new Html5Qrcode("reader");
-            html5QrCode.start(
-                { facingMode: "environment" },
-                { fps: 10, qrbox: { width: 250, height: 250 } },
-                (decodedText) => {
-                    closeScannerMobile();
-                    
-                    if (context === 'pos') {
-                        document.getElementById('search-mobile').value = decodedText;
-                        searchMobile(decodedText);
-                    } else if (context === 'register') {
-                        document.getElementById('p-code-mob').value = decodedText;
+            // Pequeño retraso para que el navegador dibuje el modal antes de calcular tamaños
+            setTimeout(() => {
+                if (!html5QrCode) {
+                    html5QrCode = new Html5Qrcode("reader");
+                }
+
+                html5QrCode.start(
+                    { facingMode: "environment" }, // Usa la cámara trasera
+                    { fps: 15, qrbox: { width: 250, height: 150 } }, // Aspecto rectangular para código de barras
+                    (decodedText) => {
+                        // EXITO AL ESCANEAR
+                        closeScannerMobile();
+                        
+                        if (context === 'pos') {
+                            const productFound = products.find(p => p.code === decodedText);
+                            if (productFound) {
+                                addToCartMobile(productFound.id); // Agrega directo al carrito
+                                Swal.fire({ icon: 'success', title: productFound.name, text: 'Agregado al carrito', timer: 1000, showConfirmButton: false });
+                            } else {
+                                Swal.fire('No encontrado', 'Este código no está en el inventario', 'warning');
+                                document.getElementById('search-mobile').value = decodedText;
+                            }
+                        } else if (context === 'register') {
+                            document.getElementById('p-code-mob').value = decodedText;
+                        }
+                    },
+                    (error) => {
+                        // Ignorar los errores constantes mientras busca enfoque
                     }
-                    
-                    Swal.fire({
-                        icon: 'success',
-                        title: 'Código escaneado',
-                        text: decodedText,
-                        timer: 1500,
-                        showConfirmButton: false
-                    });
-                },
-                (errorMessage) => {}
-            ).catch(err => {
-                Swal.fire('Error', 'No se pudo acceder a la cámara. Asegúrate de dar permisos.', 'error');
-                closeScannerMobile();
-            });
+                ).catch(err => {
+                    console.error("Error iniciando cámara", err);
+                    Swal.fire('Error de Cámara', 'Debes permitir el acceso a la cámara.', 'error');
+                    closeScannerMobile();
+                });
+            }, 300);
         }
 
         function closeScannerMobile() {
             const modal = document.getElementById('scanner-modal');
-            if (modal) modal.classList.add('hidden-view');
-            if (html5QrCode) {
-                html5QrCode.stop().then(() => html5QrCode.clear()).catch(err => console.error(err));
+            modal.classList.add('hidden-view');
+            if (html5QrCode && html5QrCode.isScanning) {
+                html5QrCode.stop().then(() => {
+                    html5QrCode.clear();
+                }).catch(err => console.log(err));
             }
         }
     </script>
