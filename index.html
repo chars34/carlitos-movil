@@ -13,7 +13,6 @@
     <style>
         body { font-family: system-ui, -apple-system, sans-serif; background: #f3f4f6; margin: 0; padding-bottom: 80px; touch-action: manipulation; }
         .header { background: #dc2626; color: white; padding: 16px; text-align: center; font-weight: bold; font-size: 22px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 50; }
-        .btn-cart { background: #1f2937; color: white; padding: 14px; border-radius: 16px; font-weight: bold; display: flex; align-items: center; gap: 10px; justify-content: center; margin: 10px 15px; }
         .product-card { background: white; border-radius: 12px; padding: 12px 16px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #e5e7eb; transition: transform 0.1s; }
         .product-card:active { transform: scale(0.98); }
         .cart-item { background: white; border-radius: 12px; padding: 10px 15px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; border-left: 4px solid #dc2626; }
@@ -34,7 +33,7 @@
         .input-group .input-field { flex: 1; margin-bottom: 0; }
         .btn-scan { background: #1f2937; color: white; width: 50px; height: 50px; border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
         
-        /* Configuración de Paquetes */
+        /* Configuración de Cigarros */
         .config-box { background: #fffbeb; border: 1px solid #fde68a; border-radius: 16px; padding: 16px; margin-bottom: 15px; }
         .config-box .title { font-size: 12px; font-weight: 800; color: #92400e; text-transform: uppercase; border-bottom: 1px solid #fde68a; padding-bottom: 8px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
         .config-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
@@ -110,38 +109,37 @@
             <select id="p-type-mob" onchange="toggleConfigMobile()" class="select-field">
                 <option value="pieza">Venta por Pieza Normal</option>
                 <option value="granel">Venta a Granel (Kilos)</option>
-                <option value="cajapieza">Venta Caja / Pieza suelta</option>
-                <option value="cajetilla">Cajetilla / Cigarro suelto</option>
+                <option value="cajetilla">Cigarros (Cajetilla / Sueltos)</option>
             </select>
 
-            <!-- BLOQUE DINÁMICO (CAJAS/CAJETILLAS) -->
-            <div id="mixed-fields-mob" class="hidden config-box">
-                <div class="title"><i class="fas fa-boxes"></i> Configuración de <span id="mixed-label-title-mob">Paquete</span></div>
+            <!-- BLOQUE DINÁMICO (SOLO PARA CIGARROS) -->
+            <div id="cigar-fields-mob" class="hidden config-box">
+                <div class="title"><i class="fas fa-smoking"></i> Configuración de Cajetilla</div>
                 
-                <div id="mixed-price-fields-mob" class="config-grid">
-                    <div class="price-wrapper" id="wrap-price-box">
-                        <label class="config-label">Precio x Caja</label>
+                <div class="config-grid">
+                    <div class="price-wrapper">
+                        <label class="config-label">Precio x Cajetilla</label>
                         <span>$</span>
                         <input type="number" id="p-price-box-mob" step="0.01" placeholder="0.00" class="config-input price">
                     </div>
-                    <div class="price-wrapper" id="wrap-price-piece">
-                        <label class="config-label">Precio x Pieza</label>
+                    <div class="price-wrapper">
+                        <label class="config-label">Precio x Cigarro</label>
                         <span>$</span>
                         <input type="number" id="p-piece-price-mob" step="0.01" placeholder="0.00" class="config-input price">
                     </div>
                     <div class="full">
-                        <label class="config-label"><span id="mixed-label-per-box-mob">Piezas x Caja</span></label>
-                        <input type="number" id="p-pieces-per-box-mob" min="1" placeholder="24" value="24" class="config-input">
+                        <label class="config-label">Cigarros por Cajetilla</label>
+                        <input type="number" id="p-pieces-per-box-mob" min="1" placeholder="20" value="20" class="config-input">
                     </div>
                 </div>
 
                 <div class="config-grid mt-3 border-t border-amber-200 pt-3">
                     <div>
-                        <label class="config-label"><span id="mixed-label-stock-boxes-mob">Cajas</span> en Stock</label>
+                        <label class="config-label">Cajetillas en Stock</label>
                         <input type="number" id="p-stock-boxes-mob" min="0" placeholder="0" class="config-input">
                     </div>
                     <div>
-                        <label class="config-label"><span id="mixed-label-loose-mob">Piezas</span> Sueltas</label>
+                        <label class="config-label">Cigarros Sueltos</label>
                         <input type="number" id="p-stock-loose-mob" min="0" placeholder="0" class="config-input">
                     </div>
                 </div>
@@ -164,8 +162,13 @@
         <div class="bg-white rounded-3xl w-full max-w-sm p-4 shadow-2xl relative flex flex-col">
             <button onclick="closeScannerMobile()" class="absolute -top-3 -right-3 bg-red-500 text-white rounded-full w-10 h-10 font-bold text-xl shadow-lg border-2 border-white z-50">✕</button>
             <h3 class="text-center font-bold mb-3 text-gray-800 text-lg">Enfoca el Código de Barras</h3>
-            <div id="reader" class="rounded-2xl overflow-hidden aspect-square flex items-center justify-center bg-gray-100">
-                <div class="animate-pulse text-gray-400">Iniciando cámara...</div>
+            <!-- El marco verde ayuda visualmente a centrar el código -->
+            <div class="relative rounded-2xl overflow-hidden aspect-[4/3] bg-gray-100 flex items-center justify-center">
+                <div id="reader" class="w-full h-full absolute inset-0"></div>
+                <!-- Guía visual -->
+                <div class="absolute inset-0 border-[4px] border-transparent pointer-events-none z-10 flex items-center justify-center">
+                    <div class="w-3/4 h-1/3 border-2 border-green-500 rounded-lg bg-green-500/10"></div>
+                </div>
             </div>
         </div>
     </div>
@@ -196,7 +199,6 @@
         let cart = [];
         let html5QrCode = null;
 
-        // CONEXIÓN EN TIEMPO REAL A FIREBASE
         dbRef.on('value', (snapshot) => {
             const data = snapshot.val();
             if (data && data.products) {
@@ -217,10 +219,7 @@
             const q = query.toLowerCase().trim();
             const container = document.getElementById('product-list-mobile');
             
-            if (q === '') {
-                container.innerHTML = '';
-                return;
-            }
+            if (q === '') { container.innerHTML = ''; return; }
 
             const filtered = products.filter(p => p.name.toLowerCase().includes(q) || (p.code && p.code.toLowerCase() === q));
             
@@ -233,39 +232,34 @@
                 <div onclick="addToCartMobile(${p.id})" class="product-card cursor-pointer">
                     <div>
                         <span class="font-bold text-sm block">${p.name}</span>
-                        <span class="text-xs text-gray-500">Disp: ${p.stock}</span>
+                        <span class="text-xs text-gray-500">Disp: ${Number(p.stock).toFixed(2)}</span>
                     </div>
                     <span class="font-black text-blue-600">$${Number(p.price).toFixed(2)}</span>
                 </div>
             `).join('');
         }
 
-        // AGREGAR AL CARRITO
+        // AGREGAR AL CARRITO (Simplificado para Solo Cigarros)
         function addToCartMobile(id) {
             const product = products.find(p => p.id === id);
             if (!product || product.stock <= 0) return Swal.fire('Sin stock', 'No hay unidades de este producto', 'warning');
 
-            // Si es un producto con tipos de venta especiales
-            if (product.type === 'cajetilla' || product.type === 'cajapieza') {
+            if (product.type === 'cajetilla') {
                 const piecePrice = product.piecePrice || 0;
                 const boxPrice = product.price || 0;
-                const isCigar = product.type === 'cajetilla' || product.category === 'Cigarros';
-                
-                const btnBox = isCigar ? '📦 Cajetilla' : '📦 Caja Completa';
-                const btnPiece = isCigar ? '🚬 Cigarro Suelto' : '🍬 Pieza Suelta';
 
                 Swal.fire({
                     title: product.name,
-                    html: `Elige cómo venderlo:`,
+                    html: `¿Qué estás vendiendo?`,
                     showDenyButton: true, showCancelButton: true,
-                    confirmButtonText: `${btnBox} ($${boxPrice})`,
-                    denyButtonText: `${btnPiece} ($${piecePrice})`,
+                    confirmButtonText: `📦 Cajetilla ($${boxPrice})`,
+                    denyButtonText: `🚬 Cigarro ($${piecePrice})`,
                     cancelButtonText: 'Cancelar',
                     customClass: { confirmButton: 'bg-blue-600', denyButton: 'bg-green-600' }
                 }).then(res => {
                     if (res.isConfirmed) {
-                        const exist = cart.find(c => c.id === product.id && c.sellType === 'Caja');
-                        if(exist) { exist.qty++; } else { cart.push({ ...product, qty: 1, price: boxPrice, sellType: 'Caja', name: `${product.name} (Caja)` }); }
+                        const exist = cart.find(c => c.id === product.id && c.sellType === 'Cajetilla');
+                        if(exist) { exist.qty++; } else { cart.push({ ...product, qty: 1, price: boxPrice, sellType: 'Cajetilla', name: `${product.name} (Cajetilla)` }); }
                         renderCartMobile();
                     } else if (res.isDenied) {
                         const exist = cart.find(c => c.id === product.id && c.sellType === 'Suelto');
@@ -280,7 +274,6 @@
             const exist = cart.find(c => c.id === id && !c.sellType);
             if(exist) { exist.qty++; } else { cart.push({ ...product, qty: 1 }); }
             
-            // Limpiar búsqueda si se agregó correctamente
             document.getElementById('search-mobile').value = '';
             document.getElementById('product-list-mobile').innerHTML = '';
             renderCartMobile();
@@ -357,12 +350,7 @@
             }).then(res => {
                 if(res.isConfirmed) {
                     const change = res.value - total;
-                    Swal.fire({
-                        icon: 'success',
-                        title: 'Venta Exitosa',
-                        html: `<div class="text-xl">Su cambio: <b class="text-green-600 text-3xl block mt-2">$${change.toFixed(2)}</b></div>`,
-                        confirmButtonText: 'Aceptar'
-                    });
+                    Swal.fire({ icon: 'success', title: 'Venta Exitosa', html: `<div class="text-xl">Su cambio: <b class="text-green-600 text-3xl block mt-2">$${change.toFixed(2)}</b></div>`, confirmButtonText: 'Aceptar' });
                     finalizeSaleMobile(total);
                 }
             });
@@ -376,7 +364,7 @@
                     const prod = data.products.find(p => p.id === item.id);
                     if(prod) {
                         if(item.sellType === 'Suelto') {
-                            prod.stock -= (1 / (prod.piecesPerBox || 1));
+                            prod.stock -= (1 / (prod.piecesPerBox || 20));
                         } else {
                             prod.stock -= item.qty;
                         }
@@ -392,7 +380,7 @@
             });
         }
 
-        // REGISTRAR PRODUCTO CORREGIDO
+        // REGISTRAR PRODUCTO (Solo Cajetillas y Normales)
         function saveProductMobile() {
             const name = document.getElementById('p-name-mob').value.trim();
             if(!name) return Swal.fire('Atención', 'El nombre del producto es obligatorio', 'warning');
@@ -403,13 +391,12 @@
             let piecePrice = 0;
             let piecesPerBox = null;
             
-            // Lógica según el tipo de producto
-            if (type === 'cajapieza' || type === 'cajetilla') {
+            if (type === 'cajetilla') {
                 const boxes = parseFloat(document.getElementById('p-stock-boxes-mob').value) || 0;
-                piecesPerBox = parseInt(document.getElementById('p-pieces-per-box-mob').value) || 1;
+                piecesPerBox = parseInt(document.getElementById('p-pieces-per-box-mob').value) || 20;
                 const loose = parseFloat(document.getElementById('p-stock-loose-mob').value) || 0;
                 
-                stockVal = boxes + (loose / piecesPerBox); // Se guarda en unidades de "Cajas" decimales
+                stockVal = boxes + (loose / piecesPerBox);
                 finalPrice = parseFloat(document.getElementById('p-price-box-mob').value) || 0;
                 piecePrice = parseFloat(document.getElementById('p-piece-price-mob').value) || 0;
             } else {
@@ -435,8 +422,6 @@
 
             dbRef.once('value').then(snap => {
                 const data = snap.val() || { products: [] };
-                
-                // Evitar códigos duplicados
                 if(newProduct.code && data.products.some(p => p.code === newProduct.code)) {
                     return Swal.fire('Error', 'Ese código de barras ya está registrado', 'error');
                 }
@@ -444,89 +429,84 @@
                 data.products.push(newProduct);
                 dbRef.set(data);
                 
-                Swal.fire({ icon: 'success', title: 'Guardado', text: 'Producto agregado al inventario', timer: 1500 });
+                Swal.fire({ icon: 'success', title: 'Guardado', text: 'Producto agregado', timer: 1500 });
                 
-                // Limpiar formulario
                 document.querySelectorAll('#view-registro input').forEach(input => input.value = '');
-                document.getElementById('p-pieces-per-box-mob').value = '24';
+                document.getElementById('p-pieces-per-box-mob').value = '20';
             });
         }
 
-        // ALTERNAR CAMPOS DINÁMICOS
+        // ALTERNAR CAMPOS (Solo para cigarros)
         function toggleConfigMobile() {
             const type = document.getElementById('p-type-mob').value;
-            const mixedFields = document.getElementById('mixed-fields-mob');
+            const cigarFields = document.getElementById('cigar-fields-mob');
             const normalFields = document.getElementById('normal-fields-mob');
-            const cat = document.getElementById('p-cat-mob').value;
 
-            if (type === 'cajapieza' || type === 'cajetilla') {
-                mixedFields.classList.remove('hidden');
+            if (type === 'cajetilla') {
+                cigarFields.classList.remove('hidden');
                 normalFields.classList.add('hidden');
-                
-                const title = document.getElementById('mixed-label-title-mob');
-                const labelPerBox = document.getElementById('mixed-label-per-box-mob');
-                const labelStockBoxes = document.getElementById('mixed-label-stock-boxes-mob');
-                const labelLoose = document.getElementById('mixed-label-loose-mob');
-
-                if (type === 'cajetilla' || (type === 'cajapieza' && cat === 'Cigarros')) {
-                    title.innerText = 'Cajetilla';
-                    labelPerBox.innerText = 'Cigarros x Cajetilla';
-                    labelStockBoxes.innerText = 'Cajetillas';
-                    labelLoose.innerText = 'Cigarros Sueltos';
-                } else {
-                    title.innerText = 'Caja/Paquete';
-                    labelPerBox.innerText = 'Piezas x Caja';
-                    labelStockBoxes.innerText = 'Cajas Cerradas';
-                    labelLoose.innerText = 'Piezas Sueltas';
-                }
+                // Forzar la categoría a Cigarros automáticamente por comodidad
+                document.getElementById('p-cat-mob').value = 'Cigarros';
             } else {
-                mixedFields.classList.add('hidden');
+                cigarFields.classList.add('hidden');
                 normalFields.classList.remove('hidden');
             }
         }
 
-        // 👉 LÓGICA DE CÁMARA MEJORADA 👈
+        // 🚀 LÓGICA DE CÁMARA OPTIMIZADA PARA CÓDIGOS DE BARRAS
         function openScannerMobile(context) {
-            // Nota de seguridad: getUserMedia en móviles SOLO funciona bajo conexión segura HTTPS
             if (window.isSecureContext === false) {
-                return Swal.fire('Cámara bloqueada', 'Tu navegador requiere que la página empiece con HTTPS:// para usar la cámara.', 'error');
+                return Swal.fire('Cámara bloqueada', 'Tu navegador requiere HTTPS:// para usar la cámara.', 'error');
             }
 
             const modal = document.getElementById('scanner-modal');
             modal.classList.remove('hidden-view');
 
-            // Pequeño retraso para que el navegador dibuje el modal antes de calcular tamaños
             setTimeout(() => {
                 if (!html5QrCode) {
                     html5QrCode = new Html5Qrcode("reader");
                 }
 
+                // OPTIMIZACIÓN: Solo busca formatos de códigos de barras lineales (EAN, UPC, CODE128)
+                // Ignora QR codes y otros, haciendo el escaneo mucho más rápido.
+                const formatsToSupport = [
+                    Html5QrcodeSupportedFormats.EAN_13,
+                    Html5QrcodeSupportedFormats.EAN_8,
+                    Html5QrcodeSupportedFormats.UPC_A,
+                    Html5QrcodeSupportedFormats.UPC_E,
+                    Html5QrcodeSupportedFormats.CODE_128,
+                    Html5QrcodeSupportedFormats.CODE_39
+                ];
+
                 html5QrCode.start(
-                    { facingMode: "environment" }, // Usa la cámara trasera
-                    { fps: 15, qrbox: { width: 250, height: 150 } }, // Aspecto rectangular para código de barras
+                    { facingMode: "environment" }, 
+                    { 
+                        fps: 20, // Aumentado para leer más rápido
+                        qrbox: { width: 300, height: 120 }, // Área de escaneo rectangular
+                        formatsToSupport: formatsToSupport,
+                        disableFlip: false
+                    },
                     (decodedText) => {
-                        // EXITO AL ESCANEAR
+                        // Éxito
                         closeScannerMobile();
                         
                         if (context === 'pos') {
                             const productFound = products.find(p => p.code === decodedText);
                             if (productFound) {
-                                addToCartMobile(productFound.id); // Agrega directo al carrito
-                                Swal.fire({ icon: 'success', title: productFound.name, text: 'Agregado al carrito', timer: 1000, showConfirmButton: false });
+                                addToCartMobile(productFound.id);
+                                Swal.fire({ icon: 'success', title: productFound.name, text: 'Agregado', timer: 800, showConfirmButton: false });
                             } else {
-                                Swal.fire('No encontrado', 'Este código no está en el inventario', 'warning');
+                                Swal.fire('No encontrado', 'Este código no está registrado', 'warning');
                                 document.getElementById('search-mobile').value = decodedText;
                             }
                         } else if (context === 'register') {
                             document.getElementById('p-code-mob').value = decodedText;
                         }
                     },
-                    (error) => {
-                        // Ignorar los errores constantes mientras busca enfoque
-                    }
+                    (error) => { /* Ignorar errores de "código no encontrado en este frame" */ }
                 ).catch(err => {
-                    console.error("Error iniciando cámara", err);
-                    Swal.fire('Error de Cámara', 'Debes permitir el acceso a la cámara.', 'error');
+                    console.error("Error cámara", err);
+                    Swal.fire('Error', 'Permite el acceso a la cámara.', 'error');
                     closeScannerMobile();
                 });
             }, 300);
@@ -536,9 +516,7 @@
             const modal = document.getElementById('scanner-modal');
             modal.classList.add('hidden-view');
             if (html5QrCode && html5QrCode.isScanning) {
-                html5QrCode.stop().then(() => {
-                    html5QrCode.clear();
-                }).catch(err => console.log(err));
+                html5QrCode.stop().then(() => html5QrCode.clear()).catch(err => console.log(err));
             }
         }
     </script>
