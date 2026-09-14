@@ -29,13 +29,14 @@
         .hidden-view { display: none !important; }
 
         /* ═══════════════════ VINCULACIÓN ═══════════════════ */
-        #link-screen {
+        #link-screen, #payment-screen {
             position: fixed; inset: 0;
             background: linear-gradient(135deg, var(--tienda-color) 0%, var(--tienda-color-dark) 100%);
             z-index: 9998;
             display: flex; align-items: center; justify-content: center;
             padding: 24px;
         }
+        #payment-screen { z-index: 9999; }
         .link-card {
             background: white; border-radius: 32px;
             padding: 36px 28px; max-width: 400px; width: 100%;
@@ -53,10 +54,13 @@
             align-items: center; justify-content: center; margin-bottom: 20px;
         }
         .link-icon i { font-size: 42px; color: var(--tienda-color); }
+        .link-icon.danger { background: #fee2e2; }
+        .link-icon.danger i { color: #dc2626; }
         .link-title {
             font-size: 28px; font-weight: 900; color: #0f172a;
             text-transform: uppercase; letter-spacing: -0.5px; margin: 0 0 6px;
         }
+        .link-title .danger { color: #dc2626; }
         .link-subtitle {
             font-size: 11px; color: #94a3b8; font-weight: 700;
             letter-spacing: 2.5px; text-transform: uppercase; margin-bottom: 28px;
@@ -72,6 +76,10 @@
         .link-info p:last-child {
             font-size: 13px; color: #1e293b; margin: 0; font-weight: 600; line-height: 1.4;
         }
+        .link-info.warning {
+            background: #fef3c7; border-color: #fcd34d;
+        }
+        .link-info.warning p { color: #92400e; }
         .btn-primary {
             width: 100%;
             background: linear-gradient(135deg, var(--tienda-color), var(--tienda-color-dark));
@@ -84,6 +92,10 @@
             display: flex; align-items: center; justify-content: center; gap: 10px;
         }
         .btn-primary:active { transform: scale(0.97); }
+        .btn-green {
+            background: linear-gradient(135deg, #10b981, #059669);
+            box-shadow: 0 8px 24px rgba(16,185,129,0.3);
+        }
         .btn-secondary {
             width: 100%; background: white; color: #64748b;
             padding: 14px; border-radius: 14px; font-weight: 700;
@@ -91,6 +103,28 @@
             transition: all 0.2s;
         }
         .btn-secondary:active { background: #f1f5f9; }
+        .btn-link {
+            background: none; border: none; color: #94a3b8;
+            font-size: 12px; font-weight: 700; text-decoration: underline;
+            cursor: pointer; padding: 8px; margin-top: 8px;
+        }
+        .btn-link:active { color: #64748b; }
+
+        /* Pasos */
+        .steps-box {
+            background: #fef3c7; border: 1px solid #fcd34d;
+            border-radius: 14px; padding: 14px; margin-top: 16px;
+            text-align: left;
+        }
+        .steps-box .title {
+            font-size: 11px; font-weight: 900; color: #92400e;
+            text-transform: uppercase; margin: 0 0 8px;
+            letter-spacing: 0.5px;
+        }
+        .steps-box ol {
+            font-size: 11px; color: #78350f; margin: 0;
+            padding-left: 18px; line-height: 1.6;
+        }
 
         /* ═══════════════════ HEADER ═══════════════════ */
         .header {
@@ -394,11 +428,71 @@
             50% { opacity: 0.4; }
         }
 
-        .swal2-container { z-index: 99999 !important; }
-        .swal2-popup { z-index: 100000 !important; border-radius: 20px !important; }
+        /* Banner DEMO */
+        .demo-banner {
+            background: #f59e0b;
+            color: white;
+            padding: 10px 16px;
+            font-size: 11px;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            text-align: center;
+            position: sticky;
+            top: 64px;
+            z-index: 45;
+            box-shadow: 0 4px 12px rgba(245,158,11,0.3);
+        }
+
+        .swal2-container { z-index: 999999 !important; }
+        .swal2-popup { z-index: 1000000 !important; border-radius: 20px !important; }
     </style>
 </head>
 <body>
+
+    <!-- ═══════════ PANTALLA DE LICENCIA REQUERIDA ═══════════ -->
+    <div id="payment-screen" class="hidden-view">
+        <div class="link-card">
+            <div class="link-icon danger">
+                <i class="fas fa-lock"></i>
+            </div>
+            <h1 class="link-title">Licencia<br><span class="danger">Requerida</span></h1>
+            <p class="link-subtitle">Tu período ha expirado</p>
+
+            <div class="link-info warning">
+                <p id="payment-message-title">Aviso importante</p>
+                <p id="payment-message-text">Para continuar usando el sistema, activa tu suscripción.</p>
+            </div>
+
+            <button class="btn-primary" onclick="abrirLinkDePagoMovil()">
+                <i class="fas fa-credit-card"></i> 1. Pagar Suscripción
+            </button>
+
+            <button class="btn-primary btn-green" onclick="enviarComprobanteWhatsAppMovil()">
+                <i class="fab fa-whatsapp" style="font-size:18px;"></i> 2. Enviar comprobante
+            </button>
+
+            <div class="steps-box">
+                <p class="title">📋 Pasos para activar:</p>
+                <ol>
+                    <li>Presiona "Pagar Suscripción" y completa el pago.</li>
+                    <li>Toma captura del comprobante.</li>
+                    <li>Presiona "Enviar comprobante" y adjúntalo en WhatsApp.</li>
+                    <li>Recibirás confirmación en minutos. ✅</li>
+                </ol>
+            </div>
+
+            <button class="btn-link" onclick="cerrarSesionMovil()">
+                Cerrar y salir del sistema
+            </button>
+
+            <p style="font-size:10px; color:#94a3b8; margin-top:16px;">¿Problemas? Contacta a soporte</p>
+        </div>
+    </div>
 
     <!-- ═══════════ PANTALLA DE VINCULACIÓN ═══════════ -->
     <div id="link-screen">
@@ -453,6 +547,12 @@
             </button>
             <span class="header-title" id="header-title">Mini Super Carlitos</span>
             <span style="width:40px;"></span>
+        </div>
+
+        <!-- Banner DEMO (se muestra solo en modo demo) -->
+        <div id="demo-banner" class="demo-banner hidden-view">
+            <i class="fas fa-exclamation-triangle"></i>
+            <span>Modo DEMO - Funcionalidad limitada</span>
         </div>
 
         <!-- MENÚ -->
@@ -709,6 +809,14 @@
 
     <script>
         // ═══════════════════════════════════════════════════════════════
+        // CONFIGURACIÓN DE WHATSAPP SOPORTE
+        // ═══════════════════════════════════════════════════════════════
+        const WHATSAPP_SOPORTE = {
+            numero: "5212371062600",
+            nombre: "Soporte POS Carlitos"
+        };
+
+        // ═══════════════════════════════════════════════════════════════
         // FIREBASE
         // ═══════════════════════════════════════════════════════════════
         const firebaseConfig = {
@@ -727,14 +835,15 @@
         // ═══════════════════════════════════════════════════════════════
         let TIENDA_ACTUAL = null;
         let dbRef = null;
+        let licenciaRef = null;
         let products = [];
         let html5QrCode = null;
         let linkScanner = null;
         let scannerContext = null;
         let lastScannedCode = null;
         let scanCooldown = false;
+        let licenciaActiva = false;
 
-        // ID único de este dispositivo (para identificar y evitar auto-eco)
         const DEVICE_ID = 'DEV-' + Math.random().toString(36).substring(2, 8).toUpperCase();
         localStorage.setItem('deviceId', DEVICE_ID);
 
@@ -774,6 +883,216 @@
             const g = (num >> 8) & 255;
             const b = num & 255;
             return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+        }
+
+        // ═══════════════════════════════════════════════════════════════
+        // 📱 SISTEMA DE LICENCIAS
+        // ═══════════════════════════════════════════════════════════════
+        function verificarLicencia() {
+            if (!licenciaRef) return;
+            
+            licenciaRef.on("value", (snapshot) => {
+                const licencia = snapshot.val();
+                
+                if (!licencia) {
+                    console.log("⚠️ [LICENCIA] No existe nodo. Creando por defecto...");
+                    licenciaRef.set({
+                        estado_licencia: "activa",
+                        fecha_vencimiento: "2026-12-31"
+                    });
+                    return;
+                }
+                
+                const estado = licencia.estado_licencia;
+                const fechaVenc = licencia.fecha_vencimiento;
+                
+                console.log("🔐 [LICENCIA] Estado:", estado, "| Vence:", fechaVenc);
+                
+                // Verificar si la fecha ya pasó
+                if (fechaVenc && estado === "activa") {
+                    const hoy = new Date();
+                    const vencimiento = new Date(fechaVenc + "T23:59:59");
+                    if (hoy > vencimiento) {
+                        console.log("❌ [LICENCIA] Vencida por fecha");
+                        licenciaActiva = false;
+                        mostrarPantallaPago("Tu licencia ha expirado el " + fechaVenc);
+                        return;
+                    }
+                }
+                
+                // Evaluar estado
+                if (estado === "activa" || estado === "demo") {
+                    licenciaActiva = true;
+                    ocultarPantallaPago();
+                    
+                    const demoBanner = $("demo-banner");
+                    if (estado === "demo") {
+                        if (demoBanner) demoBanner.classList.remove("hidden-view");
+                        mostrarToast("⚠️ Modo DEMO - Funcionalidad limitada", "warning");
+                    } else {
+                        if (demoBanner) demoBanner.classList.add("hidden-view");
+                    }
+                } else {
+                    licenciaActiva = false;
+                    mostrarPantallaPago();
+                }
+            });
+        }
+
+        function mostrarPantallaPago(mensaje) {
+            const overlay = $("payment-screen");
+            if (!overlay) return;
+            
+            // Ocultar todas las demás pantallas
+            $("link-screen").classList.add("hidden-view");
+            $("app-main").classList.add("hidden-view");
+            $("scanner-modal").classList.add("hidden-view");
+            $("link-scanner-modal").classList.add("hidden-view");
+            
+            // Actualizar mensaje
+            const msgText = $("payment-message-text");
+            const msgTitle = $("payment-message-title");
+            if (msgText && mensaje) {
+                msgText.innerText = mensaje;
+                if (msgTitle) msgTitle.innerText = "Licencia expirada";
+            } else {
+                if (msgText) msgText.innerText = "Para continuar usando el sistema, activa tu suscripción.";
+                if (msgTitle) msgTitle.innerText = "Aviso importante";
+            }
+            
+            // Mostrar pantalla de pago
+            overlay.classList.remove("hidden-view");
+        }
+
+        function ocultarPantallaPago() {
+            const overlay = $("payment-screen");
+            if (overlay) overlay.classList.add("hidden-view");
+            
+            // Si hay tienda guardada, mostrar app; si no, mostrar vinculación
+            const tiendaGuardada = localStorage.getItem('tiendaId');
+            if (tiendaGuardada && TIENDA_ACTUAL) {
+                $("app-main").classList.remove("hidden-view");
+            } else if (tiendaGuardada) {
+                const nombreGuardado = localStorage.getItem('tiendaNombre');
+                iniciarApp(tiendaGuardada, nombreGuardado || 'Mi Tienda');
+            } else {
+                $("link-screen").classList.remove("hidden-view");
+            }
+        }
+
+        function abrirLinkDePagoMovil() {
+            // 🔴 REEMPLAZA CON TU LINK DE MERCADOPAGO/STRIPE
+            const linkDePago = "https://mpago.la/1vYWcLR";
+            
+            window.open(linkDePago, "_blank");
+            
+            Swal.fire({
+                icon: "info",
+                title: "💳 Completar Pago",
+                html: `
+                    <div style="text-align:left;font-size:14px;">
+                        <p style="margin-bottom:10px;">Se ha abierto una nueva ventana para completar el pago.</p>
+                        <p style="margin-bottom:10px;"><strong>Importante:</strong> Una vez completado el pago, envía el comprobante por WhatsApp para activar tu licencia.</p>
+                        <p style="font-size:12px;color:#94a3b8;">Si no ves la ventana, permite las ventanas emergentes.</p>
+                    </div>
+                `,
+                confirmButtonText: "📱 Enviar comprobante",
+                confirmButtonColor: "#10b981",
+                showCancelButton: true,
+                cancelButtonText: "Cerrar",
+                cancelButtonColor: "#6b7280"
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    enviarComprobanteWhatsAppMovil();
+                }
+            });
+        }
+
+        function enviarComprobanteWhatsAppMovil() {
+            console.log("📱 [COMPROBANTE] Iniciando envío...");
+            
+            const nombreTienda = TIENDA_ACTUAL ? TIENDA_ACTUAL.nombre : (localStorage.getItem('tiendaNombre') || "MI TIENDA");
+            const idTienda = TIENDA_ACTUAL ? TIENDA_ACTUAL.id : (localStorage.getItem('tiendaId') || "desconocido");
+            const numero = WHATSAPP_SOPORTE.numero;
+            
+            const fecha = new Date();
+            const fechaStr = fecha.toLocaleDateString('es-MX');
+            const horaStr = fecha.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
+            
+            const mensaje = "Hola, acabo de realizar el pago de mi suscripcion al Sistema POS Carlitos.\n\n" +
+                "🏪 Tienda: " + nombreTienda + "\n" +
+                "🔑 ID: " + idTienda + "\n" +
+                "📅 Fecha: " + fechaStr + " " + horaStr + "\n\n" +
+                "📸 Adjunto el comprobante de pago.\n\n" +
+                "Por favor activar mi licencia. Gracias!";
+            
+            const mensajeCodificado = encodeURIComponent(mensaje);
+            
+            // En móvil, wa.me siempre funciona bien
+            const urlWhatsApp = "https://wa.me/" + numero + "?text=" + mensajeCodificado;
+            
+            window.open(urlWhatsApp, "_blank");
+            
+            setTimeout(() => {
+                Swal.fire({
+                    icon: "success",
+                    title: "📱 WhatsApp abierto",
+                    html: `
+                        <div style="text-align:left;font-size:14px;">
+                            <p style="margin-bottom:12px;"><strong>No olvides adjuntar el comprobante:</strong></p>
+                            <ol style="font-size:13px;color:#4b5563;margin:0;padding-left:20px;line-height:1.8;">
+                                <li>Presiona el ícono 📎</li>
+                                <li>Selecciona la captura de tu pago</li>
+                                <li>Presiona enviar 📤</li>
+                            </ol>
+                            <p style="font-size:12px;color:#059669;font-weight:bold;text-align:center;margin-top:12px;">
+                                ✅ Recibirás confirmación en minutos
+                            </p>
+                        </div>
+                    `,
+                    confirmButtonText: "✅ Ya envié el comprobante",
+                    confirmButtonColor: "#25D366",
+                    showCancelButton: true,
+                    cancelButtonText: "Cerrar",
+                    cancelButtonColor: "#6b7280"
+                });
+            }, 2000);
+        }
+
+        function cerrarSesionMovil() {
+            Swal.fire({
+                title: "¿Cerrar el sistema?",
+                text: "Se cerrará completamente la aplicación.",
+                icon: "question",
+                showCancelButton: true,
+                confirmButtonText: "🚪 Cerrar",
+                cancelButtonText: "Cancelar",
+                confirmButtonColor: "#dc2626",
+                cancelButtonColor: "#6b7280",
+                reverseButtons: true
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    // Limpiar todo
+                    localStorage.removeItem('tiendaId');
+                    localStorage.removeItem('tiendaNombre');
+                    localStorage.removeItem('tiendaColor');
+                    
+                    // Cerrar app (si es Electron o PWA)
+                    if (window.electronAPI && window.electronAPI.cerrarApp) {
+                        window.electronAPI.cerrarApp();
+                    } else {
+                        window.close();
+                        setTimeout(() => {
+                            Swal.fire({
+                                icon: "info",
+                                title: "Cierra manualmente",
+                                text: "Cierra esta pestaña o aplicación para salir.",
+                                confirmButtonColor: "#10b981"
+                            });
+                        }, 500);
+                    }
+                }
+            });
         }
 
         // ═══════════════════════════════════════════════════════════════
@@ -883,6 +1202,10 @@
             $('header-title').innerText = tiendaNombre || 'Mi Tienda';
 
             dbRef = firebase.database().ref(`tiendas/${tiendaId}/miniSuperDb`);
+            licenciaRef = firebase.database().ref(`tiendas/${tiendaId}/licencia`);
+
+            // ⭐ VERIFICAR LICENCIA
+            verificarLicencia();
 
             dbRef.on('value', (snapshot) => {
                 const data = snapshot.val();
@@ -921,6 +1244,11 @@
         // NAVEGACIÓN
         // ═══════════════════════════════════════════════════════════════
         function abrirFuncion(funcion) {
+            if (!licenciaActiva) {
+                mostrarToast('⚠️ Licencia inactiva', 'error');
+                return;
+            }
+            
             $('main-menu').classList.add('hidden-view');
             $('header-back').classList.remove('hidden-view');
             ['scan','price','add','stock'].forEach(v => $('view-' + v).classList.add('hidden-view'));
@@ -956,6 +1284,11 @@
         // ESCÁNER
         // ═══════════════════════════════════════════════════════════════
         function iniciarEscaneoContinuo(context) {
+            if (!licenciaActiva) {
+                mostrarToast('⚠️ Licencia inactiva', 'error');
+                return;
+            }
+            
             scannerContext = context || 'scan';
             lastScannedCode = null;
             scanCooldown = false;
@@ -1023,12 +1356,11 @@
         }
 
         // ═══════════════════════════════════════════════════════════════
-        // PROCESAR ESCANEO (Cierra cámara en los 3 modos)
+        // PROCESAR ESCANEO
         // ═══════════════════════════════════════════════════════════════
         function procesarEscaneo(code) {
             const product = products.find(p => p.code === code);
 
-            // SCAN: cierra cámara
             if (scannerContext === 'scan') {
                 cerrarEscanerProducto();
                 setTimeout(() => {
@@ -1053,7 +1385,6 @@
                 return;
             }
 
-            // PRICE: cierra cámara
             if (scannerContext === 'price') {
                 cerrarEscanerProducto();
                 setTimeout(() => {
@@ -1067,7 +1398,6 @@
                 return;
             }
 
-            // ADD: cierra cámara
             if (scannerContext === 'add') {
                 cerrarEscanerProducto();
                 setTimeout(() => {
@@ -1166,7 +1496,7 @@
         }
 
         // ═══════════════════════════════════════════════════════════════
-        // CAMBIO DE PRECIO (usa update en el nodo específico - anti-conflicto)
+        // CAMBIO DE PRECIO
         // ═══════════════════════════════════════════════════════════════
         function mostrarFormularioCambioPrecio(product) {
             $('price-result').innerHTML = `
@@ -1190,38 +1520,43 @@
                 </div>
             `;
         }
-function confirmarCambioPrecio(productId) {
-    const newPrice = parseFloat($('new-price-input').value);
-    const pin = $('pin-price-input').value.trim();
-    if (!newPrice || newPrice <= 0) return mostrarToast('Ingresa un precio válido', 'error');
-    if (!pin) return mostrarToast('Ingresa el PIN del dueño', 'error');
 
-    const ownerPin = localStorage.getItem('ownerPin') || 'admin123';
-    if (pin !== ownerPin) {
-        mostrarToast('PIN incorrecto', 'error');
-        vibrarError();
-        return;
-    }
+        function confirmarCambioPrecio(productId) {
+            if (!licenciaActiva) {
+                mostrarToast('⚠️ Licencia inactiva', 'error');
+                return;
+            }
+            
+            const newPrice = parseFloat($('new-price-input').value);
+            const pin = $('pin-price-input').value.trim();
+            if (!newPrice || newPrice <= 0) return mostrarToast('Ingresa un precio válido', 'error');
+            if (!pin) return mostrarToast('Ingresa el PIN del dueño', 'error');
 
-    dbRef.child('products').once('value').then(snap => {
-        let arr = snap.val() || [];
-        if (!Array.isArray(arr)) arr = Object.values(arr);
-        
-        // Buscar el producto por ID
-        const idx = arr.findIndex(p => String(p.id) === String(productId));
-        if (idx === -1) throw new Error('Producto no encontrado');
-        
-        arr[idx].price = newPrice;
-        return dbRef.child('products').set(arr);
-    }).then(() => {
-        vibrarYBeep();
-        Swal.fire({ icon: 'success', title: '✅ Precio actualizado', text: `Nuevo precio: $${newPrice.toFixed(2)}`, timer: 1800, showConfirmButton: false });
-        $('price-result').innerHTML = '';
-    }).catch(err => mostrarToast('Error: ' + err.message, 'error'));
-}
+            const ownerPin = localStorage.getItem('ownerPin') || 'admin123';
+            if (pin !== ownerPin) {
+                mostrarToast('PIN incorrecto', 'error');
+                vibrarError();
+                return;
+            }
+
+            dbRef.child('products').once('value').then(snap => {
+                let arr = snap.val() || [];
+                if (!Array.isArray(arr)) arr = Object.values(arr);
+                
+                const idx = arr.findIndex(p => String(p.id) === String(productId));
+                if (idx === -1) throw new Error('Producto no encontrado');
+                
+                arr[idx].price = newPrice;
+                return dbRef.child('products').set(arr);
+            }).then(() => {
+                vibrarYBeep();
+                Swal.fire({ icon: 'success', title: '✅ Precio actualizado', text: `Nuevo precio: $${newPrice.toFixed(2)}`, timer: 1800, showConfirmButton: false });
+                $('price-result').innerHTML = '';
+            }).catch(err => mostrarToast('Error: ' + err.message, 'error'));
+        }
 
         // ═══════════════════════════════════════════════════════════════
-        // AGREGAR PRODUCTO (usa push - anti-conflicto)
+        // AGREGAR PRODUCTO
         // ═══════════════════════════════════════════════════════════════
         async function autocompletarDesdePrecioCheck(codigo) {
             const nameInput = $('p-name-mob');
@@ -1307,6 +1642,7 @@ function confirmarCambioPrecio(productId) {
 
         function guardarProductoMobile() {
             if (!dbRef) return mostrarToast('No hay tienda vinculada', 'error');
+            if (!licenciaActiva) return mostrarToast('⚠️ Licencia inactiva', 'error');
 
             const name = $('p-name-mob').value.trim();
             if (!name) return mostrarToast('El nombre es obligatorio', 'error');
@@ -1365,10 +1701,8 @@ function confirmarCambioPrecio(productId) {
                 }
             }
 
-            // ✅ Verificar código duplicado ANTES de pedir PIN
             if (code && products.some(p => p.code === code)) return mostrarToast('Código duplicado', 'error');
 
-            // Pedir PIN
             Swal.fire({
                 title: '🔐 Autorización',
                 text: 'Ingresa el PIN del dueño para guardar',
@@ -1389,14 +1723,12 @@ function confirmarCambioPrecio(productId) {
             }).then(result => {
                 if (!result.isConfirmed) return;
 
-                // ✅ Anti-conflicto: usar push() para generar ID único
-                // Esto evita que dos dispositivos sobrescriban el array completo
-               dbRef.child('products').once('value').then(snap => {
-    let currentProducts = snap.val() || [];
-    if (!Array.isArray(currentProducts)) currentProducts = Object.values(currentProducts);
-    currentProducts.push(productData);
-    return dbRef.child('products').set(currentProducts);
-}).then(() => {
+                dbRef.child('products').once('value').then(snap => {
+                    let currentProducts = snap.val() || [];
+                    if (!Array.isArray(currentProducts)) currentProducts = Object.values(currentProducts);
+                    currentProducts.push(productData);
+                    return dbRef.child('products').set(currentProducts);
+                }).then(() => {
                     vibrarYBeep();
                     Swal.fire({ icon: 'success', title: '✅ Producto guardado', text: productData.name, timer: 1800, showConfirmButton: false });
                     ['p-name-mob','p-code-mob','p-cost-mob','p-margin-mob','p-price-main-mob','p-stock-mob',
@@ -1551,7 +1883,7 @@ function confirmarCambioPrecio(productId) {
             });
         }
 
-        console.log('✅ Carlitos Móvil v5 - Anti-conflictos para múltiples dispositivos');
+        console.log('✅ Carlitos Móvil v6 - Con sistema de licencias');
         console.log('📱 Device ID:', DEVICE_ID);
     </script>
 </body>
