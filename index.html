@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#dc2626">
     <title>Carlitos Móvil</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
@@ -11,242 +12,1547 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
     <style>
-        body { font-family: system-ui, -apple-system, sans-serif; background: #f3f4f6; margin: 0; padding-bottom: 80px; touch-action: manipulation; }
-        .header { background: #dc2626; color: white; padding: 16px; text-align: center; font-weight: bold; font-size: 22px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 50; }
-        .product-card { background: white; border-radius: 12px; padding: 12px 16px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #e5e7eb; transition: transform 0.1s; }
-        .product-card:active { transform: scale(0.98); }
-        .cart-item { background: white; border-radius: 12px; padding: 10px 15px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; border-left: 4px solid #dc2626; }
-        .bottom-nav { position: fixed; bottom: 0; left: 0; width: 100%; background: white; display: flex; border-top: 1px solid #e5e7eb; box-shadow: 0 -2px 10px rgba(0,0,0,0.05); z-index: 50; }
-        .bottom-nav button { flex: 1; padding: 12px 0; font-weight: bold; color: #6b7280; text-align: center; transition: 0.2s; }
-        .bottom-nav button.active { color: #dc2626; border-top: 3px solid #dc2626; background: #fef2f2; }
+        :root {
+            --tienda-color: #dc2626;
+            --tienda-color-dark: #991b1b;
+            --tienda-color-light: rgba(220, 38, 38, 0.1);
+        }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body {
+            font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+            background: #f1f5f9;
+            margin: 0;
+            min-height: 100vh;
+            color: #1e293b;
+            touch-action: manipulation;
+        }
         .hidden-view { display: none !important; }
-        .search-input { width: 100%; padding: 12px 16px; border-radius: 30px; border: 1px solid #d1d5db; font-size: 16px; background: white; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02); }
-        .btn-cobrar { background: #10b981; color: white; padding: 16px; border-radius: 16px; font-weight: bold; text-align: center; margin: 10px 0; }
-        .input-field { width: 100%; border: 1px solid #d1d5db; padding: 12px 16px; border-radius: 12px; font-size: 16px; background: white; margin-bottom: 10px; }
-        .select-field { width: 100%; border: 1px solid #d1d5db; padding: 12px 16px; border-radius: 12px; font-size: 16px; background: white; margin-bottom: 10px; }
-        
-        #reader { width: 100%; background: #000; border-radius: 16px; overflow: hidden; border: none; }
-        #reader video { object-fit: cover; }
-        #scanner-modal { background: rgba(0,0,0,0.85); z-index: 9999; backdrop-filter: blur(4px); }
-        .input-group { display: flex; gap: 10px; align-items: center; }
-        .input-group .input-field { flex: 1; margin-bottom: 0; }
-        .btn-scan { background: #1f2937; color: white; width: 50px; height: 50px; border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-        
-        .config-box { background: #fffbeb; border: 1px solid #fde68a; border-radius: 16px; padding: 16px; margin-bottom: 15px; }
-        .config-box .title { font-size: 12px; font-weight: 800; color: #92400e; text-transform: uppercase; border-bottom: 1px solid #fde68a; padding-bottom: 8px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+
+        /* ═══════════════════ VINCULACIÓN ═══════════════════ */
+        #link-screen {
+            position: fixed; inset: 0;
+            background: linear-gradient(135deg, var(--tienda-color) 0%, var(--tienda-color-dark) 100%);
+            z-index: 9998;
+            display: flex; align-items: center; justify-content: center;
+            padding: 24px;
+        }
+        .link-card {
+            background: white; border-radius: 32px;
+            padding: 36px 28px; max-width: 400px; width: 100%;
+            box-shadow: 0 24px 60px rgba(0,0,0,0.3);
+            text-align: center; position: relative; overflow: hidden;
+        }
+        .link-card::before {
+            content: ''; position: absolute; top: 0; left: 0;
+            width: 100%; height: 6px;
+            background: linear-gradient(90deg, var(--tienda-color), var(--tienda-color-dark));
+        }
+        .link-icon {
+            width: 88px; height: 88px; background: var(--tienda-color-light);
+            border-radius: 26px; display: inline-flex;
+            align-items: center; justify-content: center; margin-bottom: 20px;
+        }
+        .link-icon i { font-size: 42px; color: var(--tienda-color); }
+        .link-title {
+            font-size: 28px; font-weight: 900; color: #0f172a;
+            text-transform: uppercase; letter-spacing: -0.5px; margin: 0 0 6px;
+        }
+        .link-subtitle {
+            font-size: 11px; color: #94a3b8; font-weight: 700;
+            letter-spacing: 2.5px; text-transform: uppercase; margin-bottom: 28px;
+        }
+        .link-info {
+            background: #f8fafc; border-radius: 16px; padding: 16px;
+            margin-bottom: 20px; border: 1.5px solid #e2e8f0;
+        }
+        .link-info p:first-child {
+            font-size: 11px; color: #64748b; margin: 0 0 6px;
+            font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;
+        }
+        .link-info p:last-child {
+            font-size: 13px; color: #1e293b; margin: 0; font-weight: 600; line-height: 1.4;
+        }
+        .btn-primary {
+            width: 100%;
+            background: linear-gradient(135deg, var(--tienda-color), var(--tienda-color-dark));
+            color: white; padding: 18px; border-radius: 18px;
+            font-weight: 800; font-size: 15px; border: none; cursor: pointer;
+            text-transform: uppercase; letter-spacing: 1px;
+            box-shadow: 0 8px 24px var(--tienda-color-light);
+            transition: transform 0.15s, box-shadow 0.15s;
+            margin-bottom: 12px;
+            display: flex; align-items: center; justify-content: center; gap: 10px;
+        }
+        .btn-primary:active { transform: scale(0.97); }
+        .btn-secondary {
+            width: 100%; background: white; color: #64748b;
+            padding: 14px; border-radius: 14px; font-weight: 700;
+            font-size: 13px; border: 2px solid #e2e8f0; cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-secondary:active { background: #f1f5f9; }
+
+        /* ═══════════════════ HEADER ═══════════════════ */
+        .header {
+            background: linear-gradient(135deg, var(--tienda-color), var(--tienda-color-dark));
+            color: white; padding: 18px 20px; font-weight: 900; font-size: 17px;
+            box-shadow: 0 6px 20px var(--tienda-color-light);
+            position: sticky; top: 0; z-index: 50;
+            display: flex; align-items: center; justify-content: space-between;
+            min-height: 64px;
+        }
+        .header-back {
+            position: absolute; left: 16px;
+            background: rgba(255,255,255,0.2); border: none; color: white;
+            width: 40px; height: 40px; border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; font-size: 17px; backdrop-filter: blur(10px);
+            transition: background 0.2s;
+        }
+        .header-back:active { background: rgba(255,255,255,0.35); }
+        .header-title {
+            flex: 1; text-align: center;
+            text-transform: uppercase; letter-spacing: 0.5px;
+            font-size: 15px; padding: 0 50px;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+
+        /* ═══════════════════ MENÚ ═══════════════════ */
+        #main-menu {
+            padding: 20px 16px; display: grid;
+            grid-template-columns: 1fr; gap: 12px;
+            max-width: 500px; margin: 0 auto;
+        }
+        .menu-header { text-align: center; padding: 8px 0 16px; }
+        .menu-header h2 {
+            font-size: 14px; font-weight: 900; color: #94a3b8;
+            text-transform: uppercase; letter-spacing: 2px; margin: 0 0 4px;
+        }
+        .menu-header p { font-size: 12px; color: #64748b; margin: 0; }
+        .menu-button {
+            background: white; border-radius: 22px; padding: 20px;
+            display: flex; align-items: center; gap: 16px;
+            box-shadow: 0 4px 16px rgba(15,23,42,0.06);
+            border: 1.5px solid #f1f5f9; cursor: pointer;
+            transition: all 0.15s; text-align: left; width: 100%;
+        }
+        .menu-button:active { transform: scale(0.97); box-shadow: 0 2px 8px rgba(15,23,42,0.1); }
+        .menu-icon {
+            width: 60px; height: 60px; border-radius: 18px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 24px; flex-shrink: 0; color: white;
+            box-shadow: 0 6px 14px rgba(0,0,0,0.12);
+        }
+        .menu-icon.scan { background: linear-gradient(135deg, #3b82f6, #1e40af); }
+        .menu-icon.price { background: linear-gradient(135deg, #f59e0b, #d97706); }
+        .menu-icon.add { background: linear-gradient(135deg, #10b981, #059669); }
+        .menu-icon.stock { background: linear-gradient(135deg, #8b5cf6, #6d28d9); }
+        .menu-text { flex: 1; }
+        .menu-text h3 {
+            margin: 0 0 4px; font-size: 15px; font-weight: 800;
+            color: #0f172a; text-transform: uppercase; letter-spacing: 0.3px;
+        }
+        .menu-text p { margin: 0; font-size: 12px; color: #64748b; line-height: 1.3; }
+        .menu-arrow { color: #cbd5e1; font-size: 16px; }
+
+        /* ═══════════════════ VISTAS ═══════════════════ */
+        .view-content { padding: 16px; max-width: 500px; margin: 0 auto; padding-bottom: 32px; }
+        .card {
+            background: white; border-radius: 22px; padding: 22px;
+            box-shadow: 0 4px 16px rgba(15,23,42,0.05);
+            border: 1.5px solid #f1f5f9; margin-bottom: 14px;
+        }
+        .card h2 {
+            margin: 0 0 6px; font-size: 17px; font-weight: 900;
+            color: #0f172a; text-transform: uppercase; letter-spacing: 0.3px;
+            display: flex; align-items: center; gap: 10px;
+        }
+        .card .card-desc { font-size: 12px; color: #64748b; margin: 0 0 18px; line-height: 1.5; }
+
+        /* ═══════════════════ PRODUCT INFO ═══════════════════ */
+        .product-info-card {
+            background: white; border-radius: 22px; padding: 24px;
+            box-shadow: 0 8px 24px rgba(15,23,42,0.08);
+            border: 2px solid #f1f5f9; margin-bottom: 14px;
+            animation: slideIn 0.3s ease;
+        }
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .product-info-card .badge {
+            display: inline-block; font-size: 10px; font-weight: 900;
+            padding: 4px 10px; border-radius: 100px;
+            text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px;
+        }
+        .product-info-card .badge.ok { background: #dcfce7; color: #166534; }
+        .product-info-card .badge.low { background: #fef3c7; color: #92400e; }
+        .product-info-card .badge.out { background: #fee2e2; color: #991b1b; }
+        .product-info-card .name {
+            font-size: 19px; font-weight: 900; color: #0f172a;
+            text-transform: uppercase; margin: 0 0 6px; line-height: 1.2; letter-spacing: 0.3px;
+        }
+        .product-info-card .code-tag {
+            font-size: 10px; color: #94a3b8; font-family: monospace;
+            margin-bottom: 18px; font-weight: 600;
+        }
+        .product-info-card .row {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 12px 0; border-bottom: 1px solid #f1f5f9; font-size: 14px;
+        }
+        .product-info-card .row:last-child { border-bottom: none; }
+        .product-info-card .row .label {
+            color: #64748b; font-weight: 600; display: flex; align-items: center; gap: 8px;
+        }
+        .product-info-card .row .value { color: #0f172a; font-weight: 800; text-align: right; }
+        .product-info-card .row .value.price {
+            color: var(--tienda-color); font-size: 22px; font-weight: 900;
+        }
+        .product-info-card .row .value.stock-low { color: #f59e0b; }
+        .product-info-card .row .value.stock-ok { color: #10b981; }
+        .product-info-card .row .value.stock-out { color: var(--tienda-color); }
+
+        /* ═══════════════════ INPUTS ═══════════════════ */
+        .input-field {
+            width: 100%; border: 1.5px solid #e2e8f0;
+            padding: 14px 16px; border-radius: 14px; font-size: 15px;
+            background: white; margin-bottom: 12px; outline: none;
+            transition: all 0.2s; font-weight: 600; color: #1e293b;
+        }
+        .input-field:focus {
+            border-color: var(--tienda-color);
+            box-shadow: 0 0 0 3px var(--tienda-color-light);
+        }
+        .input-field::placeholder { color: #94a3b8; font-weight: 500; }
+        .select-field {
+            width: 100%; border: 1.5px solid #e2e8f0;
+            padding: 14px 16px; border-radius: 14px; font-size: 15px;
+            background: white; margin-bottom: 12px; outline: none;
+            font-weight: 600; color: #1e293b; cursor: pointer;
+        }
+        .select-field:focus {
+            border-color: var(--tienda-color);
+            box-shadow: 0 0 0 3px var(--tienda-color-light);
+        }
+        .section-label {
+            font-size: 11px; font-weight: 900; color: #64748b;
+            text-transform: uppercase; letter-spacing: 0.8px;
+            display: block; margin-bottom: 6px;
+        }
+
+        /* ═══════════════════ BOTONES ═══════════════════ */
+        .action-btn {
+            width: 100%; padding: 16px; border-radius: 16px;
+            font-weight: 800; font-size: 14px; border: none; cursor: pointer;
+            text-transform: uppercase; letter-spacing: 0.8px;
+            transition: transform 0.12s, box-shadow 0.12s;
+            display: flex; align-items: center; justify-content: center; gap: 10px;
+        }
+        .action-btn:active { transform: scale(0.97); }
+        .action-btn.blue { background: linear-gradient(135deg, #3b82f6, #1e40af); color: white; box-shadow: 0 6px 16px rgba(59,130,246,0.3); }
+        .action-btn.green { background: linear-gradient(135deg, #10b981, #059669); color: white; box-shadow: 0 6px 16px rgba(16,185,129,0.3); }
+        .action-btn.amber { background: linear-gradient(135deg, #f59e0b, #d97706); color: white; box-shadow: 0 6px 16px rgba(245,158,11,0.3); }
+        .action-btn.primary { background: linear-gradient(135deg, var(--tienda-color), var(--tienda-color-dark)); color: white; box-shadow: 0 6px 16px var(--tienda-color-light); }
+
+        /* ═══════════════════ CONFIG BOXES ═══════════════════ */
+        .config-box {
+            background: #fffbeb; border: 1.5px solid #fde68a;
+            border-radius: 16px; padding: 16px; margin-bottom: 14px;
+        }
+        .config-box .title {
+            font-size: 11px; font-weight: 900; color: #92400e;
+            text-transform: uppercase; letter-spacing: 0.5px;
+            border-bottom: 1px dashed #fcd34d;
+            padding-bottom: 10px; margin-bottom: 14px;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .config-label {
+            font-size: 10px; font-weight: 800; color: #92400e;
+            text-transform: uppercase; display: block;
+            margin-bottom: 5px; letter-spacing: 0.3px;
+        }
+        .config-input {
+            width: 100%; border: 1.5px solid #fde68a;
+            padding: 11px; border-radius: 10px; font-weight: 700;
+            text-align: center; background: white; outline: none;
+            transition: 0.2s; font-size: 15px; color: #78350f;
+        }
+        .config-input:focus { border-color: #f59e0b; box-shadow: 0 0 0 3px rgba(245,158,11,0.15); }
         .config-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        .config-grid .full { grid-column: span 2; }
-        .config-label { font-size: 11px; font-weight: 800; color: #92400e; text-transform: uppercase; display: block; margin-bottom: 4px; }
-        .config-input { width: 100%; border: 1px solid #fde68a; padding: 10px; border-radius: 10px; font-weight: bold; text-align: center; background: white; }
-        .config-input.price { text-align: right; padding-right: 30px; }
-        .price-wrapper { position: relative; }
-        .price-wrapper span { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-weight: bold; color: #92400e; }
+        .config-grid.three { grid-template-columns: 1fr 1fr 1fr; }
+
+        /* ═══════════════════ SCANNER ═══════════════════ */
+        #scanner-modal, #link-scanner-modal {
+            position: fixed; inset: 0;
+            background: rgba(15,23,42,0.94); z-index: 9999;
+            backdrop-filter: blur(8px);
+            display: flex; align-items: center; justify-content: center; padding: 16px;
+        }
+        #link-scanner-modal { z-index: 10000; }
+        .scanner-box {
+            background: white; border-radius: 26px;
+            width: 100%; max-width: 380px; padding: 18px;
+            position: relative; box-shadow: 0 24px 60px rgba(0,0,0,0.4);
+        }
+        .scanner-close {
+            position: absolute; top: -12px; right: -12px;
+            background: var(--tienda-color); color: white; border-radius: 50%;
+            width: 44px; height: 44px; font-weight: 900; font-size: 18px;
+            box-shadow: 0 6px 16px var(--tienda-color-light);
+            border: 3px solid white; z-index: 50; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .scanner-close:active { transform: scale(0.92); }
+        .scanner-title {
+            text-align: center; font-weight: 800; color: #0f172a;
+            font-size: 15px; margin: 6px 0 14px;
+            text-transform: uppercase; letter-spacing: 0.5px;
+        }
+        .scanner-frame {
+            position: relative; border-radius: 18px;
+            overflow: hidden; height: 340px; background: #0f172a;
+        }
+        #reader, #reader-link { width: 100%; height: 100%; position: absolute; inset: 0; }
+        #reader video, #reader-link video { object-fit: cover; }
+        .scanner-overlay {
+            position: absolute; inset: 0; pointer-events: none; z-index: 10;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .scanner-overlay-inner {
+            width: 78%; height: 32%; border: 3px solid #10b981;
+            border-radius: 16px; background: rgba(16,185,129,0.1);
+            box-shadow: 0 0 24px rgba(16,185,129,0.5);
+            transition: all 0.3s ease; position: relative;
+        }
+        .scanner-hint {
+            text-align: center; font-size: 12px; color: #94a3b8;
+            margin: 14px 0 0; font-weight: 600;
+        }
+
+        /* ═══════════════════ STOCK ═══════════════════ */
+        .stock-summary { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+        .stock-summary-card {
+            background: white; border-radius: 18px; padding: 16px 14px;
+            text-align: center; border: 1.5px solid #f1f5f9;
+            box-shadow: 0 2px 8px rgba(15,23,42,0.04);
+        }
+        .stock-summary-card .label {
+            font-size: 10px; font-weight: 900; color: #94a3b8;
+            text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 6px;
+        }
+        .stock-summary-card .value { font-size: 24px; font-weight: 900; color: #0f172a; line-height: 1; }
+        .stock-summary-card.warn .value { color: #f59e0b; }
+        .stock-summary-card.danger .value { color: var(--tienda-color); }
+        .stock-summary-card.money .value { color: #10b981; font-size: 17px; }
+
+        .stock-item {
+            background: white; border-radius: 16px; padding: 14px 16px;
+            margin-bottom: 8px; border-left: 4px solid var(--tienda-color);
+            display: flex; justify-content: space-between; align-items: center;
+            box-shadow: 0 2px 8px rgba(15,23,42,0.04);
+            cursor: pointer; transition: transform 0.12s;
+        }
+        .stock-item:active { transform: scale(0.98); }
+        .stock-item.warn { border-left-color: #f59e0b; }
+        .stock-item.danger { border-left-color: var(--tienda-color); }
+        .stock-item .info { flex: 1; min-width: 0; }
+        .stock-item .info .name {
+            font-weight: 800; color: #0f172a; font-size: 14px;
+            text-transform: uppercase; white-space: nowrap;
+            overflow: hidden; text-overflow: ellipsis;
+        }
+        .stock-item .info .meta { font-size: 11px; color: #94a3b8; margin-top: 3px; }
+        .stock-item .qty { font-size: 20px; font-weight: 900; color: #0f172a; margin-left: 12px; }
+        .stock-item .qty.low { color: #f59e0b; }
+        .stock-item .qty.out { color: var(--tienda-color); }
+
+        .section-title {
+            font-size: 12px; font-weight: 900; color: #94a3b8;
+            text-transform: uppercase; letter-spacing: 1px;
+            margin: 20px 0 10px; display: flex; align-items: center; gap: 8px;
+        }
+        .empty-state { text-align: center; padding: 44px 20px; color: #94a3b8; }
+        .empty-state i { font-size: 52px; margin-bottom: 14px; opacity: 0.35; }
+        .empty-state p { margin: 0; font-weight: 700; font-size: 14px; }
+
+        /* ═══════════════════ BADGE DE DISPOSITIVO ═══════════════════ */
+        .device-badge {
+            position: fixed; bottom: 12px; right: 12px;
+            background: rgba(15,23,42,0.85); color: white;
+            padding: 6px 12px; border-radius: 100px;
+            font-size: 10px; font-weight: 800;
+            letter-spacing: 0.5px; z-index: 100;
+            display: flex; align-items: center; gap: 6px;
+            backdrop-filter: blur(10px);
+        }
+        .device-badge .dot {
+            width: 6px; height: 6px; border-radius: 50%;
+            background: #10b981; animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+
+        .swal2-container { z-index: 99999 !important; }
+        .swal2-popup { z-index: 100000 !important; border-radius: 20px !important; }
     </style>
 </head>
 <body>
 
-    <div class="header">🛒 Mini Super Carlitos</div>
+    <!-- ═══════════ PANTALLA DE VINCULACIÓN ═══════════ -->
+    <div id="link-screen">
+        <div class="link-card">
+            <div class="link-icon"><i class="fas fa-store"></i></div>
+            <h1 class="link-title" id="link-title-name">Mi Tienda</h1>
+            <p class="link-subtitle">Sistema de Ing. Chars</p>
 
-    <div id="view-caja" class="p-4">
-        <div class="flex gap-2 mb-4 items-center">
-            <button onclick="openScannerMobile('pos')" class="bg-gray-800 text-white w-12 h-12 rounded-full flex items-center justify-center shadow-md shrink-0">
-                <i class="fas fa-barcode text-lg"></i>
+            <div class="link-info">
+                <p>Para vincular esta app</p>
+                <p>Escanea el código QR que aparece en tu sistema de PC</p>
+            </div>
+
+            <button class="btn-primary" onclick="abrirEscanerVinculacion()">
+                <i class="fas fa-qrcode"></i> Escanear QR de PC
             </button>
-            <input type="text" id="search-mobile" oninput="searchMobile(this.value)" placeholder="🔍 Buscar nombre o código..." class="search-input flex-1">
-        </div>
 
-        <div id="product-list-mobile" class="space-y-2 max-h-60 overflow-y-auto"></div>
-
-        <div style="background: white; border-radius: 16px; padding: 16px; margin-top: 10px; box-shadow: 0 -4px 10px rgba(0,0,0,0.05);">
-            <div class="flex justify-between items-center mb-2">
-                <span class="font-bold text-lg">🛒 Carrito</span>
-                <button onclick="clearCartMobile()" class="text-red-500 text-sm font-bold bg-red-50 px-3 py-1 rounded-lg">Vaciar</button>
-            </div>
-            <div id="cart-list-mobile" class="mb-4 min-h-[100px] max-h-64 overflow-y-auto">
-                <p class="text-gray-400 text-center text-sm py-8">Aún no hay productos en el carrito</p>
-            </div>
-            <div class="flex justify-between font-black text-xl mb-2 border-t pt-4">
-                <span>Total</span>
-                <span id="total-mobile" class="text-red-600">$0.00</span>
-            </div>
-            <button onclick="openCheckoutMobile()" class="btn-cobrar w-full">
-                <i class="fas fa-money-bill-wave"></i> Cobrar en Efectivo
+            <button class="btn-secondary" onclick="mostrarIngresoManual()">
+                Ingresar código manualmente
             </button>
-        </div>
-    </div>
 
-    <div id="view-registro" class="hidden-view p-4">
-        <div class="bg-white rounded-2xl p-4 shadow-sm mb-4">
-            <h3 class="font-bold text-lg mb-3">📦 Registrar Producto</h3>
-            <div class="input-group mb-3">
-                <input type="text" id="p-code-mob" placeholder="Código de Barras (opcional)" class="input-field">
-                <button onclick="openScannerMobile('register')" class="btn-scan shadow-sm">
-                    <i class="fas fa-barcode text-lg"></i>
+            <div id="manual-input-area" class="hidden-view" style="margin-top:16px;">
+                <input type="text" id="manual-token" placeholder="Ej: VINC-A1B2C3-XXXX" class="input-field" style="text-transform:uppercase; text-align:center; font-family:monospace; font-size:14px; letter-spacing:2px;">
+                <button class="btn-primary" onclick="vincularManual()">
+                    <i class="fas fa-check"></i> Vincular
                 </button>
             </div>
-            <input type="text" id="p-name-mob" required placeholder="Nombre del producto" class="input-field uppercase">
-            <input type="number" id="p-cost-mob" placeholder="Costo proveedor ($)" class="input-field">
-            
-            <select id="p-cat-mob" class="select-field">
-                <optgroup label="Bebidas y Licores">
-                    <option>Refrescos</option>
-                    <option>Alcohol</option>
-                </optgroup>
-                <optgroup label="Alimentos y Botanas">
-                    <option>Sabritas</option>
-                    <option>Galletas</option>
-                    <option>Frutas</option>
-                    <option>Lácteos</option>
-                    <option>Alimentos</option>
-                    <option>Dulces</option>
-                    <option>Especias</option>
-                </optgroup>
-                <optgroup label="Higiene y Hogar">
-                    <option>Higiene</option>
-                    <option>Limpieza</option>
-                </optgroup>
-                <optgroup label="Otros Departamentos">
-                    <option>Cigarros</option>
-                    <option>Ferretería</option>
-                    <option>Celular</option>
-                    <option>Eléctrico</option>
-                    <option>Farmacia</option>
-                    <option>Otros</option>
-                </optgroup>
-            </select>
 
-            <select id="p-type-mob" onchange="toggleConfigMobile()" class="select-field">
-                <option value="pieza">Venta por Pieza Normal</option><option value="granel">Venta a Granel (Kilos)</option><option value="cajetilla">Cigarros (Cajetilla / Sueltos)</option>
-            </select>
-            <div id="cigar-fields-mob" class="hidden config-box">
-                <div class="title"><i class="fas fa-smoking"></i> Configuración de Cajetilla</div>
-                <div class="config-grid">
-                    <div class="price-wrapper">
-                        <label class="config-label">Precio x Cajetilla</label>
-                        <span>$</span><input type="number" id="p-price-box-mob" step="0.01" placeholder="0.00" class="config-input price">
-                    </div>
-                    <div class="price-wrapper">
-                        <label class="config-label">Precio x Cigarro</label>
-                        <span>$</span><input type="number" id="p-piece-price-mob" step="0.01" placeholder="0.00" class="config-input price">
-                    </div>
-                    <div class="full"><label class="config-label">Cigarros por Cajetilla</label><input type="number" id="p-pieces-per-box-mob" min="1" placeholder="20" value="20" class="config-input"></div>
-                </div>
-                <div class="config-grid mt-3 border-t border-amber-200 pt-3">
-                    <div><label class="config-label">Cajetillas en Stock</label><input type="number" id="p-stock-boxes-mob" min="0" placeholder="0" class="config-input"></div>
-                    <div><label class="config-label">Cigarros Sueltos</label><input type="number" id="p-stock-loose-mob" min="0" placeholder="0" class="config-input"></div>
-                </div>
-            </div>
-            <div id="normal-fields-mob">
-                <input type="number" id="p-price-main-mob" required placeholder="Precio Venta ($)" class="input-field">
-                <input type="number" id="p-stock-mob" placeholder="Stock actual (piezas)" class="input-field">
-            </div>
-            <button onclick="saveProductMobile()" class="w-full bg-blue-600 text-white p-4 rounded-xl font-bold shadow-lg mt-2"><i class="fas fa-save"></i> Guardar Producto</button>
+            <p style="font-size:10px; color:#94a3b8; margin-top:24px;">¿Problemas? Contacta a soporte</p>
         </div>
     </div>
 
-    <div id="scanner-modal" class="hidden-view fixed inset-0 flex items-center justify-center p-4">
-        <div class="bg-white rounded-3xl w-full max-w-sm p-4 shadow-2xl relative flex flex-col">
-            <button onclick="closeScannerMobile()" class="absolute -top-3 -right-3 bg-red-500 text-white rounded-full w-10 h-10 font-bold text-xl shadow-lg border-2 border-white z-50">✕</button>
-            <h3 class="text-center font-bold mb-3 text-gray-800 text-lg">Enfoca el Código</h3>
-            <div class="relative rounded-2xl overflow-hidden h-[300px] bg-gray-100 flex items-center justify-center">
-                <div id="reader" class="w-full h-full absolute inset-0"></div>
-                <div class="absolute inset-0 border-[4px] border-transparent pointer-events-none z-10 flex items-center justify-center">
-                    <div class="w-3/4 h-1/3 border-2 border-green-500 rounded-lg bg-green-500/10"></div>
-                </div>
+    <!-- ═══════════ SCANNER VINCULACIÓN ═══════════ -->
+    <div id="link-scanner-modal" class="hidden-view">
+        <div class="scanner-box">
+            <button class="scanner-close" onclick="cerrarEscanerVinculacion()">✕</button>
+            <h3 class="scanner-title">Escanea el QR de la PC</h3>
+            <div class="scanner-frame">
+                <div id="reader-link"></div>
+                <div class="scanner-overlay"><div class="scanner-overlay-inner"></div></div>
             </div>
+            <p class="scanner-hint"><i class="fas fa-info-circle"></i> Apunta al código QR</p>
         </div>
     </div>
 
-    <div class="bottom-nav">
-        <button id="btn-caja" class="active" onclick="switchView('caja')"><i class="fas fa-cash-register block text-xl mb-1"></i> Caja</button>
-        <button id="btn-registro" onclick="switchView('registro')"><i class="fas fa-plus-circle block text-xl mb-1"></i> Registrar</button>
+    <!-- ═══════════ APP PRINCIPAL ═══════════ -->
+    <div id="app-main" class="hidden-view">
+
+        <div class="header" id="app-header">
+            <button class="header-back hidden-view" id="header-back" onclick="volverAlMenu()">
+                <i class="fas fa-arrow-left"></i>
+            </button>
+            <span class="header-title" id="header-title">Mini Super Carlitos</span>
+            <span style="width:40px;"></span>
+        </div>
+
+        <!-- MENÚ -->
+        <div id="main-menu">
+            <div class="menu-header">
+                <h2>¿Qué deseas hacer?</h2>
+                <p>Selecciona una opción</p>
+            </div>
+
+            <button class="menu-button" onclick="abrirFuncion('scan')">
+                <div class="menu-icon scan"><i class="fas fa-barcode"></i></div>
+                <div class="menu-text">
+                    <h3>Escanear producto</h3>
+                    <p>Consulta precio y stock rápido</p>
+                </div>
+                <i class="fas fa-chevron-right menu-arrow"></i>
+            </button>
+
+            <button class="menu-button" onclick="abrirFuncion('price')">
+                <div class="menu-icon price"><i class="fas fa-tag"></i></div>
+                <div class="menu-text">
+                    <h3>Cambiar precio</h3>
+                    <p>Actualiza precios al instante</p>
+                </div>
+                <i class="fas fa-chevron-right menu-arrow"></i>
+            </button>
+
+            <button class="menu-button" onclick="abrirFuncion('add')">
+                <div class="menu-icon add"><i class="fas fa-plus-circle"></i></div>
+                <div class="menu-text">
+                    <h3>Agregar producto</h3>
+                    <p>Registra mercancía nueva</p>
+                </div>
+                <i class="fas fa-chevron-right menu-arrow"></i>
+            </button>
+
+            <button class="menu-button" onclick="abrirFuncion('stock')">
+                <div class="menu-icon stock"><i class="fas fa-boxes"></i></div>
+                <div class="menu-text">
+                    <h3>Ver stock</h3>
+                    <p>Revisa inventario desde donde estés</p>
+                </div>
+                <i class="fas fa-chevron-right menu-arrow"></i>
+            </button>
+        </div>
+
+        <!-- VISTA: SCAN -->
+        <div id="view-scan" class="view-content hidden-view">
+            <div class="card">
+                <h2><i class="fas fa-barcode" style="color:#3b82f6;"></i> Escanear Producto</h2>
+                <p class="card-desc">Apunta la cámara al código de barras. La cámara se cierra al detectar el producto.</p>
+                <button class="action-btn blue" onclick="iniciarEscaneoContinuo('scan')">
+                    <i class="fas fa-camera"></i> Abrir cámara
+                </button>
+            </div>
+            <div id="scan-result"></div>
+        </div>
+
+        <!-- VISTA: PRICE -->
+        <div id="view-price" class="view-content hidden-view">
+            <div class="card">
+                <h2><i class="fas fa-tag" style="color:#f59e0b;"></i> Cambiar Precio</h2>
+                <p class="card-desc">Escanea el producto. La cámara se cierra al encontrarlo y podrás ingresar el nuevo precio.</p>
+                <button class="action-btn amber" onclick="iniciarEscaneoContinuo('price')">
+                    <i class="fas fa-camera"></i> Escanear producto
+                </button>
+            </div>
+            <div id="price-result"></div>
+        </div>
+
+        <!-- VISTA: ADD -->
+        <div id="view-add" class="view-content hidden-view">
+            <div class="card">
+                <h2><i class="fas fa-plus-circle" style="color:#10b981;"></i> Nuevo Producto</h2>
+                <p class="card-desc">Escanea el código y completa los datos del producto.</p>
+                <button class="action-btn green" onclick="iniciarEscaneoContinuo('add')">
+                    <i class="fas fa-camera"></i> Escanear código de barras
+                </button>
+            </div>
+
+            <div id="add-form-container" class="hidden-view">
+                <div class="card">
+                    <label class="section-label">Código de Barras</label>
+                    <div style="display:flex; gap:10px; align-items:center; margin-bottom:14px;">
+                        <input type="text" id="p-code-mob" placeholder="Escribe o escanea" class="input-field" style="margin-bottom:0; text-transform:uppercase; font-family:monospace;">
+                        <button onclick="iniciarEscaneoContinuo('add')" style="width:52px; height:52px; background:#0f172a; color:white; border-radius:14px; border:none; cursor:pointer; flex-shrink:0; display:flex; align-items:center; justify-content:center;">
+                            <i class="fas fa-barcode" style="font-size:20px;"></i>
+                        </button>
+                    </div>
+
+                    <label class="section-label">Nombre del Producto</label>
+                    <input type="text" id="p-name-mob" placeholder="EJ: COCA COLA 600ML" class="input-field" style="text-transform:uppercase;" required>
+
+                    <label class="section-label">Categoría</label>
+                    <select id="p-cat-mob" class="select-field" onchange="onCategoryChangeMobile()">
+                        <optgroup label="Bebidas y Licores">
+                            <option value="Refrescos">Refrescos</option>
+                            <option value="Alcohol">Alcohol</option>
+                            <option value="Cerveza">Cerveza</option>
+                        </optgroup>
+                        <optgroup label="Alimentos">
+                            <option value="Sabritas">Sabritas</option>
+                            <option value="Galletas">Galletas</option>
+                            <option value="Frutas">Frutas</option>
+                            <option value="Lácteos">Lácteos</option>
+                            <option value="Alimentos">Alimentos</option>
+                            <option value="Dulces">Dulces</option>
+                            <option value="Especias">Especias</option>
+                        </optgroup>
+                        <optgroup label="Higiene y Hogar">
+                            <option value="Higiene">Higiene</option>
+                            <option value="Limpieza">Limpieza</option>
+                        </optgroup>
+                        <optgroup label="Otros">
+                            <option value="Cigarros">Cigarros</option>
+                            <option value="Ferretería">Ferretería</option>
+                            <option value="Celular">Celular</option>
+                            <option value="Eléctrico">Eléctrico</option>
+                            <option value="Farmacia">Farmacia</option>
+                            <option value="papeleria">Papeleria</option>
+                            <option value="Otros">Otros</option>
+                        </optgroup>
+                    </select>
+
+                    <div id="expiry-fields-mob" class="hidden config-box" style="background:#fef3c7; border-color:#fde68a;">
+                        <div class="title" style="border-color:#fcd34d;">
+                            <i class="fas fa-calendar-alt"></i> Fecha de Caducidad
+                        </div>
+                        <input type="date" id="p-expiry-mob" class="config-input" style="text-align:left;">
+                    </div>
+
+                    <label class="section-label">Tipo de Venta</label>
+                    <select id="p-type-mob" class="select-field" onchange="toggleConfigMobile()">
+                        <option value="pieza">Por Pieza</option>
+                        <option value="granel">Por kilos/litros</option>
+                        <option value="cajapieza">Caja / Pieza</option>
+                        <option value="cajetilla">Cajetilla / Cigarro</option>
+                    </select>
+
+                    <div id="cajapieza-fields-mob" class="hidden config-box">
+                        <div class="title"><i class="fas fa-boxes"></i> Configuración de Caja/Pzs</div>
+                        <div style="margin-bottom:12px;">
+                            <label class="config-label">Pzs por caja</label>
+                            <input type="number" id="p-pieces-per-box-mob" min="1" value="24" placeholder="24" class="config-input">
+                        </div>
+                        <div class="config-grid" style="border-top:1px dashed #fcd34d; padding-top:12px;">
+                            <div>
+                                <label class="config-label">Cajas en stock</label>
+                                <input type="number" id="p-stock-boxes-mob" min="0" placeholder="0" class="config-input">
+                            </div>
+                            <div>
+                                <label class="config-label">Piezas sueltas</label>
+                                <input type="number" id="p-stock-loose-mob" min="0" placeholder="0" class="config-input">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="cigar-fields-mob" class="hidden config-box">
+                        <div class="title"><i class="fas fa-boxes"></i> Configuración de Cajetilla / Cigarro</div>
+                        <div class="config-grid three" style="margin-bottom:12px;">
+                            <div>
+                                <label class="config-label">Precio x Cajetilla</label>
+                                <input type="number" id="p-price-box-mob" step="0.01" min="0" placeholder="0.00" class="config-input">
+                            </div>
+                            <div>
+                                <label class="config-label">Precio x Cigarro</label>
+                                <input type="number" id="p-piece-price-mob" step="0.01" min="0" placeholder="0.00" class="config-input">
+                            </div>
+                            <div>
+                                <label class="config-label">Cigarros x Cajetilla</label>
+                                <input type="number" id="p-pieces-per-box-cigar-mob" min="1" value="20" placeholder="20" class="config-input">
+                            </div>
+                        </div>
+                        <div class="config-grid" style="border-top:1px dashed #fcd34d; padding-top:12px;">
+                            <div>
+                                <label class="config-label">Cajetillas en Stock</label>
+                                <input type="number" id="p-stock-boxes-cigar-mob" min="0" placeholder="0" class="config-input">
+                            </div>
+                            <div>
+                                <label class="config-label">Cigarros Sueltos</label>
+                                <input type="number" id="p-stock-loose-cigar-mob" min="0" placeholder="0" class="config-input">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="beer-fields-mob" class="hidden config-box" style="background:#fef3c7; border-color:#fcd34d;">
+                        <div class="title"><i class="fas fa-beer"></i> Precios Especiales Cerveza</div>
+                        <div class="config-grid">
+                            <div>
+                                <label class="config-label">Precio x Six</label>
+                                <input type="number" id="p-price-six-mob" step="0.01" min="0" placeholder="0.00" class="config-input">
+                            </div>
+                            <div>
+                                <label class="config-label">Precio x Caja</label>
+                                <input type="number" id="p-price-24-mob" step="0.01" min="0" placeholder="0.00" class="config-input">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-bottom:14px;">
+                        <div>
+                            <label class="section-label" style="color:#64748b;">Costo</label>
+                            <input type="number" id="p-cost-mob" step="0.01" min="0" placeholder="0.00" class="input-field" style="text-align:right; margin-bottom:0;" oninput="calcPriceFromMargin()">
+                        </div>
+                        <div>
+                            <label class="section-label" style="color:#d97706;">Margen %</label>
+                            <input type="number" id="p-margin-mob" step="0.01" min="0" placeholder="0" class="input-field" style="text-align:right; margin-bottom:0; background:#fef3c7; border-color:#fde68a; color:#92400e;" oninput="calcPriceFromMargin()">
+                        </div>
+                        <div>
+                            <label class="section-label" style="color:var(--tienda-color);">Precio</label>
+                            <input type="number" id="p-price-main-mob" step="0.01" min="0" placeholder="0.00" class="input-field" style="text-align:right; margin-bottom:0; background:#fee2e2; border-color:#fecaca; color:var(--tienda-color); font-weight:800;" oninput="calcMarginFromPrice()">
+                        </div>
+                    </div>
+
+                    <div id="normal-stock-wrapper-mob">
+                        <label class="section-label" style="text-align:center;">Unidades en Stock</label>
+                        <input type="number" id="p-stock-mob" placeholder="0.000" class="input-field" step="0.001" min="0" style="text-align:center; font-size:20px; font-weight:800;">
+                    </div>
+
+                    <button class="action-btn primary" onclick="guardarProductoMobile()" style="margin-top:8px;">
+                        <i class="fas fa-save"></i> Guardar Producto
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- VISTA: STOCK -->
+        <div id="view-stock" class="view-content hidden-view">
+            <div class="stock-summary" id="stock-summary"></div>
+            <div id="stock-alerts"></div>
+            <div id="stock-all"></div>
+        </div>
+
+    </div>
+
+    <!-- ═══════════ SCANNER PRODUCTOS ═══════════ -->
+    <div id="scanner-modal" class="hidden-view">
+        <div class="scanner-box">
+            <button class="scanner-close" onclick="cerrarEscanerProducto()">✕</button>
+            <h3 class="scanner-title" id="scanner-title">Enfoca el código de barras</h3>
+            <div class="scanner-frame">
+                <div id="reader"></div>
+                <div class="scanner-overlay"><div class="scanner-overlay-inner"></div></div>
+            </div>
+            <p class="scanner-hint" id="scanner-hint"><i class="fas fa-info-circle"></i> Escanea para ver info</p>
+        </div>
+    </div>
+
+    <!-- ═══════════ BADGE DE DISPOSITIVO ═══════════ -->
+    <div class="device-badge hidden-view" id="device-badge">
+        <span class="dot"></span>
+        <span id="device-id">Dispositivo</span>
     </div>
 
     <script>
-        const firebaseConfig = { apiKey: "AIzaSyA1mBLI8HYE5vrjtC0yiGgij2zvocfckac", authDomain: "tiendacarlitos-a5b1d.firebaseapp.com", databaseURL: "https://tiendacarlitos-a5b1d-default-rtdb.firebaseio.com", projectId: "tiendacarlitos-a5b1d", storageBucket: "tiendacarlitos-a5b1d.firebasestorage.app", messagingSenderId: "653941208919", appId: "1:653941208919:web:42bb4150ccc3f558f53012", measurementId: "G-RKZJMETTW7" };
+        // ═══════════════════════════════════════════════════════════════
+        // FIREBASE
+        // ═══════════════════════════════════════════════════════════════
+        const firebaseConfig = {
+            apiKey: "AIzaSyA1mBLI8HYE5vrjtC0yiGgij2zvocfckac",
+            authDomain: "tiendacarlitos-a5b1d.firebaseapp.com",
+            databaseURL: "https://tiendacarlitos-a5b1d-default-rtdb.firebaseio.com",
+            projectId: "tiendacarlitos-a5b1d",
+            storageBucket: "tiendacarlitos-a5b1d.firebasestorage.app",
+            messagingSenderId: "653941208919",
+            appId: "1:653941208919:web:42bb4150ccc3f558f53012"
+        };
         firebase.initializeApp(firebaseConfig);
-        const dbRef = firebase.database().ref('miniSuperDb');
-        let products = [], cart = [], html5QrCode = null;
 
-        dbRef.on('value', (snapshot) => { const data = snapshot.val(); if (data && data.products) { products = data.products; renderCartMobile(); } });
+        // ═══════════════════════════════════════════════════════════════
+        // ESTADO GLOBAL
+        // ═══════════════════════════════════════════════════════════════
+        let TIENDA_ACTUAL = null;
+        let dbRef = null;
+        let products = [];
+        let html5QrCode = null;
+        let linkScanner = null;
+        let scannerContext = null;
+        let lastScannedCode = null;
+        let scanCooldown = false;
 
-        function switchView(view) {
-            document.getElementById('view-caja').classList.toggle('hidden-view', view !== 'caja');
-            document.getElementById('view-registro').classList.toggle('hidden-view', view !== 'registro');
-            document.getElementById('btn-caja').classList.toggle('active', view === 'caja');
-            document.getElementById('btn-registro').classList.toggle('active', view === 'registro');
-        }
+        // ID único de este dispositivo (para identificar y evitar auto-eco)
+        const DEVICE_ID = 'DEV-' + Math.random().toString(36).substring(2, 8).toUpperCase();
+        localStorage.setItem('deviceId', DEVICE_ID);
 
-        function searchMobile(query) {
-            const q = query.toLowerCase().trim();
-            const container = document.getElementById('product-list-mobile');
-            if (q === '') { container.innerHTML = ''; return; }
-            const filtered = products.filter(p => p.name.toLowerCase().includes(q) || (p.code && p.code.toLowerCase() === q));
-            if(filtered.length === 0) { container.innerHTML = '<p class="text-center text-gray-400 py-6 bg-white rounded-xl">No se encontró el producto</p>'; return; }
-            container.innerHTML = filtered.map(p => `<div onclick="addToCartMobile(${p.id})" class="product-card cursor-pointer"><div><span class="font-bold text-sm block">${p.name}</span><span class="text-xs text-gray-500">Disp: ${Number(p.stock).toFixed(2)}</span></div><span class="font-black text-blue-600">$${Number(p.price).toFixed(2)}</span></div>`).join('');
-        }
+        const $ = (id) => document.getElementById(id);
+        const toArray = (val) => !val ? [] : (Array.isArray(val) ? val : Object.values(val));
 
-        function addToCartMobile(id) {
-            const product = products.find(p => p.id === id);
-            if (!product || product.stock <= 0) return Swal.fire('Sin stock', 'No hay unidades', 'warning');
-            if (product.type === 'cajetilla') {
-                Swal.fire({ title: product.name, html: `¿Qué estás vendiendo?`, showDenyButton: true, showCancelButton: true, confirmButtonText: `📦 Cajetilla`, denyButtonText: `🚬 Cigarro`, customClass: { confirmButton: 'bg-blue-600', denyButton: 'bg-green-600' } }).then(res => {
-                    if (res.isConfirmed) { cart.push({ ...product, qty: 1, price: product.price, sellType: 'Cajetilla', name: `${product.name} (Cajetilla)` }); renderCartMobile(); }
-                    else if (res.isDenied) { cart.push({ ...product, qty: 1, price: product.piecePrice, sellType: 'Suelto', name: `${product.name} (Suelto)` }); renderCartMobile(); }
-                });
-                return;
+        // ═══════════════════════════════════════════════════════════════
+        // COLOR DINÁMICO
+        // ═══════════════════════════════════════════════════════════════
+        function aplicarColorTienda(colorHex) {
+            const color = colorHex || '#dc2626';
+            const dark = oscurecerColor(color, 30);
+            const light = hexToRgba(color, 0.1);
+            document.documentElement.style.setProperty('--tienda-color', color);
+            document.documentElement.style.setProperty('--tienda-color-dark', dark);
+            document.documentElement.style.setProperty('--tienda-color-light', light);
+            let meta = document.querySelector('meta[name="theme-color"]');
+            if (!meta) {
+                meta = document.createElement('meta');
+                meta.name = 'theme-color';
+                document.head.appendChild(meta);
             }
-            cart.push({ ...product, qty: 1 }); renderCartMobile();
+            meta.setAttribute('content', color);
         }
 
-        function renderCartMobile() {
-            const container = document.getElementById('cart-list-mobile');
-            const totalSpan = document.getElementById('total-mobile');
-            let total = 0;
-            if(cart.length === 0) { container.innerHTML = '<p class="text-gray-400 text-center text-sm py-8">Aún no hay productos en el carrito</p>'; totalSpan.innerText = '$0.00'; return; }
-            container.innerHTML = cart.map((item, index) => { const sub = item.price * item.qty; total += sub; return `<div class="cart-item"><div><div class="font-bold text-sm">${item.name}</div><div class="text-xs text-gray-500">x${item.qty}</div></div><span class="font-black text-gray-800">$${sub.toFixed(2)}</span></div>` }).join('');
-            totalSpan.innerText = `$${total.toFixed(2)}`;
+        function oscurecerColor(hex, porcentaje) {
+            const num = parseInt(hex.replace('#', ''), 16);
+            const r = Math.max(0, Math.floor((num >> 16) - 255 * (porcentaje / 100)));
+            const g = Math.max(0, Math.floor(((num >> 8) & 0x00FF) - 255 * (porcentaje / 100)));
+            const b = Math.max(0, Math.floor((num & 0x0000FF) - 255 * (porcentaje / 100)));
+            return '#' + ((r << 16) | (g << 8) | b).toString(16).padStart(6, '0');
         }
 
-        function clearCartMobile() { cart = []; renderCartMobile(); }
+        function hexToRgba(hex, alpha) {
+            const num = parseInt(hex.replace('#', ''), 16);
+            const r = (num >> 16) & 255;
+            const g = (num >> 8) & 255;
+            const b = num & 255;
+            return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+        }
 
-        function openScannerMobile(context) {
-            document.getElementById('scanner-modal').classList.remove('hidden-view');
+        // ═══════════════════════════════════════════════════════════════
+        // VINCULACIÓN POR QR
+        // ═══════════════════════════════════════════════════════════════
+        function abrirEscanerVinculacion() {
+            $('link-scanner-modal').classList.remove('hidden-view');
             setTimeout(() => {
-                if (!html5QrCode) html5QrCode = new Html5Qrcode("reader");
-                html5QrCode.start({ facingMode: "environment" }, { 
-                    fps: 10, 
-                    qrbox: { width: 250, height: 250 }
-                }, (decodedText) => {
-                    closeScannerMobile();
-                    if (context === 'pos') {
-                        const productFound = products.find(p => p.code === decodedText);
-                        if (productFound) addToCartMobile(productFound.id);
-                        else Swal.fire('No encontrado', 'Código no registrado', 'warning');
-                    } else document.getElementById('p-code-mob').value = decodedText;
-                }).catch(err => Swal.fire('Error', 'Acceso cámara denegado', 'error'));
+                if (!linkScanner) linkScanner = new Html5Qrcode("reader-link");
+                linkScanner.start(
+                    { facingMode: "environment" },
+                    { fps: 10, qrbox: { width: 250, height: 250 } },
+                    (decodedText) => { cerrarEscanerVinculacion(); procesarQRVinculacion(decodedText); },
+                    () => {}
+                ).catch(err => {
+                    Swal.fire('Error', 'No se pudo abrir la cámara: ' + err.message, 'error');
+                    cerrarEscanerVinculacion();
+                });
             }, 300);
         }
 
-        function closeScannerMobile() {
-            document.getElementById('scanner-modal').classList.add('hidden-view');
-            if (html5QrCode && html5QrCode.isScanning) html5QrCode.stop();
+        function cerrarEscanerVinculacion() {
+            $('link-scanner-modal').classList.add('hidden-view');
+            if (linkScanner && linkScanner.isScanning) linkScanner.stop().catch(() => {});
+        }
+
+        async function procesarQRVinculacion(contenido) {
+            try {
+                const json = JSON.parse(contenido);
+                if (json.tipo !== 'vinculacion_pos') return Swal.fire('QR no válido', 'Este código no es de vinculación POS', 'warning');
+                const { tiendaId, tiendaNombre, token, expira } = json;
+                if (expira && Date.now() > expira) return Swal.fire('QR expirado', 'Solicita un nuevo código en la PC', 'warning');
+
+                Swal.fire({ title: 'Vinculando...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+                const snap = await firebase.database().ref(`vinculaciones/${token}`).get();
+                if (!snap.exists()) return Swal.fire('Código inválido', 'El código no existe o ya expiró', 'error');
+                const data = snap.val();
+                if (!data.activo) return Swal.fire('Código expirado', 'Este código ya no es válido', 'error');
+                if (data.tiendaId !== tiendaId) return Swal.fire('Error', 'El código no coincide con la tienda', 'error');
+
+                await firebase.database().ref(`vinculaciones/${token}/usos`).set((data.usos || 0) + 1);
+                localStorage.setItem('tiendaId', tiendaId);
+                localStorage.setItem('tiendaNombre', tiendaNombre || 'Mi Tienda');
+
+                try {
+                    const tiendaSnap = await firebase.database().ref(`tiendas/${tiendaId}/miniSuperDb`).get();
+                    if (tiendaSnap.exists()) {
+                        const info = tiendaSnap.val();
+                        if (info.tiendaInfo && info.tiendaInfo.color) localStorage.setItem('tiendaColor', info.tiendaInfo.color);
+                        if (info.config && info.config.ownerPin) localStorage.setItem('ownerPin', info.config.ownerPin);
+                    }
+                } catch (e) {}
+
+                Swal.fire({
+                    icon: 'success', title: '¡Vinculado!',
+                    html: `<div style="text-align:center;"><p>Conectado a:</p><p style="font-weight:900;color:var(--tienda-color);font-size:18px;">${tiendaNombre || tiendaId}</p></div>`,
+                    timer: 2000, showConfirmButton: false
+                }).then(() => iniciarApp(tiendaId, tiendaNombre));
+            } catch (e) {
+                Swal.fire('Error', 'El QR no es válido: ' + e.message, 'error');
+            }
+        }
+
+        function mostrarIngresoManual() { $('manual-input-area').classList.toggle('hidden-view'); }
+
+        async function vincularManual() {
+            const token = $('manual-token').value.trim().toUpperCase();
+            if (!token) return Swal.fire('Atención', 'Ingresa el código', 'warning');
+            Swal.fire({ title: 'Verificando...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+            try {
+                const snap = await firebase.database().ref(`vinculaciones/${token}`).get();
+                if (!snap.exists()) return Swal.fire('Código inválido', 'No existe o ya expiró', 'error');
+                const data = snap.val();
+                if (!data.activo) return Swal.fire('Código expirado', 'Solicita uno nuevo', 'error');
+                localStorage.setItem('tiendaId', data.tiendaId);
+                localStorage.setItem('tiendaNombre', data.tiendaNombre || 'Mi Tienda');
+
+                try {
+                    const tiendaSnap = await firebase.database().ref(`tiendas/${data.tiendaId}/miniSuperDb`).get();
+                    if (tiendaSnap.exists()) {
+                        const info = tiendaSnap.val();
+                        if (info.tiendaInfo && info.tiendaInfo.color) localStorage.setItem('tiendaColor', info.tiendaInfo.color);
+                        if (info.config && info.config.ownerPin) localStorage.setItem('ownerPin', info.config.ownerPin);
+                    }
+                } catch (e) {}
+
+                Swal.fire({ icon: 'success', title: '¡Vinculado!', timer: 1500, showConfirmButton: false })
+                    .then(() => iniciarApp(data.tiendaId, data.tiendaNombre));
+            } catch (e) { Swal.fire('Error', e.message, 'error'); }
+        }
+
+        // ═══════════════════════════════════════════════════════════════
+        // INICIAR APP
+        // ═══════════════════════════════════════════════════════════════
+        function iniciarApp(tiendaId, tiendaNombre) {
+            TIENDA_ACTUAL = { id: tiendaId, nombre: tiendaNombre };
+
+            const colorGuardado = localStorage.getItem('tiendaColor');
+            if (colorGuardado) aplicarColorTienda(colorGuardado);
+
+            $('link-screen').classList.add('hidden-view');
+            $('app-main').classList.remove('hidden-view');
+            $('device-badge').classList.remove('hidden-view');
+            $('device-id').innerText = DEVICE_ID;
+            document.title = tiendaNombre || 'Carlitos Móvil';
+            $('header-title').innerText = tiendaNombre || 'Mi Tienda';
+
+            dbRef = firebase.database().ref(`tiendas/${tiendaId}/miniSuperDb`);
+
+            dbRef.on('value', (snapshot) => {
+                const data = snapshot.val();
+                products = data && data.products ? toArray(data.products) : [];
+
+                if (data && data.config && data.config.ownerPin) {
+                    localStorage.setItem('ownerPin', data.config.ownerPin);
+                }
+                if (data && data.tiendaInfo && data.tiendaInfo.color) {
+                    const colorActual = localStorage.getItem('tiendaColor');
+                    if (colorActual !== data.tiendaInfo.color) {
+                        localStorage.setItem('tiendaColor', data.tiendaInfo.color);
+                        aplicarColorTienda(data.tiendaInfo.color);
+                    }
+                }
+                if (!$('view-stock').classList.contains('hidden-view')) renderStockView();
+            });
+
+            onCategoryChangeMobile();
+            toggleConfigMobile();
+            console.log(`✅ App vinculada a: ${tiendaNombre} (${tiendaId}) | Device: ${DEVICE_ID}`);
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            const tiendaGuardada = localStorage.getItem('tiendaId');
+            const nombreGuardado = localStorage.getItem('tiendaNombre');
+            if (tiendaGuardada) {
+                iniciarApp(tiendaGuardada, nombreGuardado || 'Mi Tienda');
+            } else {
+                $('link-screen').classList.remove('hidden-view');
+                $('app-main').classList.add('hidden-view');
+            }
+        });
+
+        // ═══════════════════════════════════════════════════════════════
+        // NAVEGACIÓN
+        // ═══════════════════════════════════════════════════════════════
+        function abrirFuncion(funcion) {
+            $('main-menu').classList.add('hidden-view');
+            $('header-back').classList.remove('hidden-view');
+            ['scan','price','add','stock'].forEach(v => $('view-' + v).classList.add('hidden-view'));
+
+            if (funcion === 'scan') {
+                $('view-scan').classList.remove('hidden-view');
+                $('header-title').innerText = 'Escanear Producto';
+                $('scan-result').innerHTML = '';
+                setTimeout(() => iniciarEscaneoContinuo('scan'), 400);
+            } else if (funcion === 'price') {
+                $('view-price').classList.remove('hidden-view');
+                $('header-title').innerText = 'Cambiar Precio';
+                $('price-result').innerHTML = '';
+            } else if (funcion === 'add') {
+                $('view-add').classList.remove('hidden-view');
+                $('header-title').innerText = 'Nuevo Producto';
+            } else if (funcion === 'stock') {
+                $('view-stock').classList.remove('hidden-view');
+                $('header-title').innerText = 'Stock';
+                renderStockView();
+            }
+        }
+
+        function volverAlMenu() {
+            $('main-menu').classList.remove('hidden-view');
+            $('header-back').classList.add('hidden-view');
+            ['scan','price','add','stock'].forEach(v => $('view-' + v).classList.add('hidden-view'));
+            $('header-title').innerText = TIENDA_ACTUAL?.nombre || 'Mi Tienda';
+            cerrarEscanerProducto();
+        }
+
+        // ═══════════════════════════════════════════════════════════════
+        // ESCÁNER
+        // ═══════════════════════════════════════════════════════════════
+        function iniciarEscaneoContinuo(context) {
+            scannerContext = context || 'scan';
+            lastScannedCode = null;
+            scanCooldown = false;
+
+            const titles = {
+                'scan': 'Enfoca el código de barras',
+                'price': 'Escanea el producto',
+                'add': 'Escanea el código'
+            };
+            const hints = {
+                'scan': 'La cámara se cierra al detectar',
+                'price': 'La cámara se cierra al encontrar el producto',
+                'add': 'Solo escanea el código del producto'
+            };
+            $('scanner-title').innerText = titles[scannerContext] || 'Enfoca el código';
+            $('scanner-hint').innerHTML = '<i class="fas fa-info-circle"></i> ' + (hints[scannerContext] || '');
+
+            $('scanner-modal').classList.remove('hidden-view');
+
+            setTimeout(() => {
+                if (!html5QrCode) html5QrCode = new Html5Qrcode("reader");
+                if (html5QrCode.isScanning) return;
+
+                html5QrCode.start(
+                    { facingMode: "environment" },
+                    { fps: 15, qrbox: { width: 280, height: 200 } },
+                    (decodedText) => {
+                        if (scanCooldown) return;
+                        if (decodedText === lastScannedCode) return;
+                        lastScannedCode = decodedText;
+                        scanCooldown = true;
+                        vibrarYBeep();
+                        procesarEscaneo(decodedText);
+                    },
+                    () => {}
+                ).catch(err => {
+                    Swal.fire('Error', 'No se pudo abrir la cámara: ' + err.message, 'error');
+                    cerrarEscanerProducto();
+                });
+            }, 300);
+        }
+
+        function cerrarEscanerProducto() {
+            $('scanner-modal').classList.add('hidden-view');
+            if (html5QrCode && html5QrCode.isScanning) html5QrCode.stop().catch(() => {});
+        }
+
+        function vibrarYBeep() {
+            if (navigator.vibrate) navigator.vibrate(80);
+            try {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.connect(gain); gain.connect(ctx.destination);
+                osc.frequency.value = 1800; osc.type = 'sine';
+                gain.gain.setValueAtTime(0.15, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.12);
+                osc.start(ctx.currentTime);
+                osc.stop(ctx.currentTime + 0.12);
+            } catch (e) {}
+        }
+
+        function vibrarError() {
+            if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+        }
+
+        // ═══════════════════════════════════════════════════════════════
+        // PROCESAR ESCANEO (Cierra cámara en los 3 modos)
+        // ═══════════════════════════════════════════════════════════════
+        function procesarEscaneo(code) {
+            const product = products.find(p => p.code === code);
+
+            // SCAN: cierra cámara
+            if (scannerContext === 'scan') {
+                cerrarEscanerProducto();
+                setTimeout(() => {
+                    if (product) {
+                        mostrarInfoProducto(product, 'scan-result');
+                    } else {
+                        $('scan-result').innerHTML = `
+                            <div class="card" style="border-color:#fecaca; background:#fef2f2; animation: slideIn 0.3s ease;">
+                                <div style="text-align:center;">
+                                    <i class="fas fa-times-circle" style="font-size:44px; color:var(--tienda-color); margin-bottom:14px;"></i>
+                                    <p style="font-weight:800; color:var(--tienda-color); margin:0 0 8px; font-size:15px;">Producto no encontrado</p>
+                                    <p style="font-size:11px; color:#94a3b8; margin:0 0 4px; text-transform:uppercase; letter-spacing:1px; font-weight:700;">Código</p>
+                                    <p style="font-family:monospace; font-weight:900; color:#0f172a; font-size:14px; margin:0;">${code}</p>
+                                </div>
+                            </div>
+                            <button class="action-btn blue" onclick="iniciarEscaneoContinuo('scan')" style="margin-top:14px;">
+                                <i class="fas fa-camera"></i> Escanear otro producto
+                            </button>
+                        `;
+                    }
+                }, 300);
+                return;
+            }
+
+            // PRICE: cierra cámara
+            if (scannerContext === 'price') {
+                cerrarEscanerProducto();
+                setTimeout(() => {
+                    if (product) {
+                        mostrarFormularioCambioPrecio(product);
+                    } else {
+                        mostrarToast('Producto no encontrado: ' + code, 'error');
+                        vibrarError();
+                    }
+                }, 300);
+                return;
+            }
+
+            // ADD: cierra cámara
+            if (scannerContext === 'add') {
+                cerrarEscanerProducto();
+                setTimeout(() => {
+                    $('p-code-mob').value = code;
+                    $('add-form-container').classList.remove('hidden-view');
+                    autocompletarDesdePrecioCheck(code);
+                }, 300);
+                return;
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════════════
+        // INFO PRODUCTO
+        // ═══════════════════════════════════════════════════════════════
+        function mostrarInfoProducto(product, containerId) {
+            const stock = Number(product.stock) || 0;
+            const stockClass = stock === 0 ? 'stock-out' : (stock < 5 ? 'stock-low' : 'stock-ok');
+            const badgeClass = stock === 0 ? 'out' : (stock < 5 ? 'low' : 'ok');
+            const badgeText = stock === 0 ? 'Agotado' : (stock < 5 ? 'Stock Bajo' : 'Disponible');
+
+            let extraInfo = '';
+
+            if (product.category === 'Cerveza') {
+                const pSix = Number(product.priceSix) || (Number(product.price) * 6);
+                const pCaja = Number(product.priceCaja) || (Number(product.price) * 24);
+                extraInfo += `
+                    <div class="row">
+                        <span class="label"><i class="fas fa-beer" style="color:#f59e0b;"></i> Precio Six-Pack</span>
+                        <span class="value" style="color:#d97706;">$${pSix.toFixed(2)}</span>
+                    </div>
+                    <div class="row">
+                        <span class="label"><i class="fas fa-box"></i> Precio Caja</span>
+                        <span class="value" style="color:#d97706;">$${pCaja.toFixed(2)}</span>
+                    </div>
+                `;
+            }
+
+            if (product.type === 'cajetilla') {
+                const ppb = Number(product.piecesPerBox) || 20;
+                extraInfo += `
+                    <div class="row">
+                        <span class="label"><i class="fas fa-smoking"></i> Precio cigarro suelto</span>
+                        <span class="value">$${Number(product.piecePrice || 0).toFixed(2)}</span>
+                    </div>
+                    <div class="row">
+                        <span class="label"><i class="fas fa-list"></i> Cigarros x cajetilla</span>
+                        <span class="value">${ppb} pzs</span>
+                    </div>
+                `;
+            }
+
+            if (product.type === 'cajapieza') {
+                const ppb = Number(product.piecesPerBox) || 24;
+                const cajas = Math.floor(stock / ppb);
+                const sueltas = stock % ppb;
+                extraInfo += `
+                    <div class="row">
+                        <span class="label"><i class="fas fa-box"></i> Equivalencia</span>
+                        <span class="value">${cajas} cajas y ${sueltas} pzs</span>
+                    </div>
+                `;
+            }
+
+            if (product.expiryDate) {
+                extraInfo += `
+                    <div class="row">
+                        <span class="label"><i class="fas fa-calendar-alt"></i> Caducidad</span>
+                        <span class="value" style="color:#f59e0b;">${product.expiryDate}</span>
+                    </div>
+                `;
+            }
+
+            $(containerId).innerHTML = `
+                <div class="product-info-card">
+                    <span class="badge ${badgeClass}">${badgeText}</span>
+                    <div class="name">${product.name}</div>
+                    ${product.code ? `<div class="code-tag">CÓDIGO: ${product.code}</div>` : ''}
+                    <div class="row">
+                        <span class="label"><i class="fas fa-dollar-sign" style="color:var(--tienda-color);"></i> Precio</span>
+                        <span class="value price">$${Number(product.price).toFixed(2)}</span>
+                    </div>
+                    <div class="row">
+                        <span class="label"><i class="fas fa-cube"></i> Stock</span>
+                        <span class="value ${stockClass}">${stock} pzs</span>
+                    </div>
+                    <div class="row">
+                        <span class="label"><i class="fas fa-tag"></i> Categoría</span>
+                        <span class="value">${product.category || 'Sin categoría'}</span>
+                    </div>
+                    ${extraInfo}
+                </div>
+                <button class="action-btn blue" onclick="iniciarEscaneoContinuo('scan')">
+                    <i class="fas fa-camera"></i> Escanear otro producto
+                </button>
+            `;
+        }
+
+        // ═══════════════════════════════════════════════════════════════
+        // CAMBIO DE PRECIO (usa update en el nodo específico - anti-conflicto)
+        // ═══════════════════════════════════════════════════════════════
+        function mostrarFormularioCambioPrecio(product) {
+            $('price-result').innerHTML = `
+                <div class="product-info-card">
+                    <span class="badge ok">Producto encontrado</span>
+                    <div class="name">${product.name}</div>
+                    <div class="row">
+                        <span class="label"><i class="fas fa-dollar-sign"></i> Precio actual</span>
+                        <span class="value price">$${Number(product.price).toFixed(2)}</span>
+                    </div>
+                </div>
+                <div class="card">
+                    <h2><i class="fas fa-edit" style="color:#f59e0b;"></i> Nuevo Precio</h2>
+                    <label class="section-label">Nuevo precio de venta</label>
+                    <input type="number" id="new-price-input" step="0.01" placeholder="0.00" class="input-field" style="text-align:center; font-size:26px; font-weight:900;" value="${Number(product.price).toFixed(2)}">
+                    <label class="section-label"><i class="fas fa-lock"></i> PIN del dueño</label>
+                    <input type="password" id="pin-price-input" placeholder="••••" class="input-field" style="text-align:center; font-size:22px; letter-spacing:6px; font-weight:900;">
+                    <button class="action-btn amber" onclick="confirmarCambioPrecio('${product.id}')" style="margin-top:8px;">
+                        <i class="fas fa-check"></i> Confirmar cambio
+                    </button>
+                </div>
+            `;
+        }
+function confirmarCambioPrecio(productId) {
+    const newPrice = parseFloat($('new-price-input').value);
+    const pin = $('pin-price-input').value.trim();
+    if (!newPrice || newPrice <= 0) return mostrarToast('Ingresa un precio válido', 'error');
+    if (!pin) return mostrarToast('Ingresa el PIN del dueño', 'error');
+
+    const ownerPin = localStorage.getItem('ownerPin') || 'admin123';
+    if (pin !== ownerPin) {
+        mostrarToast('PIN incorrecto', 'error');
+        vibrarError();
+        return;
+    }
+
+    dbRef.child('products').once('value').then(snap => {
+        let arr = snap.val() || [];
+        if (!Array.isArray(arr)) arr = Object.values(arr);
+        
+        // Buscar el producto por ID
+        const idx = arr.findIndex(p => String(p.id) === String(productId));
+        if (idx === -1) throw new Error('Producto no encontrado');
+        
+        arr[idx].price = newPrice;
+        return dbRef.child('products').set(arr);
+    }).then(() => {
+        vibrarYBeep();
+        Swal.fire({ icon: 'success', title: '✅ Precio actualizado', text: `Nuevo precio: $${newPrice.toFixed(2)}`, timer: 1800, showConfirmButton: false });
+        $('price-result').innerHTML = '';
+    }).catch(err => mostrarToast('Error: ' + err.message, 'error'));
+}
+
+        // ═══════════════════════════════════════════════════════════════
+        // AGREGAR PRODUCTO (usa push - anti-conflicto)
+        // ═══════════════════════════════════════════════════════════════
+        async function autocompletarDesdePrecioCheck(codigo) {
+            const nameInput = $('p-name-mob');
+            if (nameInput.value.trim() !== '') return;
+            nameInput.placeholder = '🔍 Buscando...';
+            nameInput.disabled = true;
+            try {
+                const url = `https://preciocheck.com/api/v1/catalogo/producto/${encodeURIComponent(codigo)}`;
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 6000);
+                const response = await fetch(url, {
+                    method: 'GET',
+                    headers: { 'X-API-Key': 'pk_77dfb0f2130af25451e86e9b00032e3bfdc10d8d5d53775dea95ca02', 'Accept': 'application/json' },
+                    signal: controller.signal
+                });
+                clearTimeout(timeoutId);
+                if (response.ok) {
+                    const data = await response.json();
+                    const producto = data.producto || data.data || data.result || data;
+                    const nombre = producto.nombre || producto.name || producto.producto || producto.description || producto.titulo;
+                    if (nombre) {
+                        nameInput.value = String(nombre).toUpperCase();
+                        mostrarToast('✨ Nombre autocompletado', 'success');
+                    } else {
+                        mostrarToast('Sin resultados', 'info');
+                    }
+                } else {
+                    mostrarToast('Sin resultados en PrecioCheck', 'info');
+                }
+            } catch (e) {
+                mostrarToast('Sin conexión a PrecioCheck', 'info');
+            } finally {
+                nameInput.disabled = false;
+                nameInput.placeholder = 'EJ: COCA COLA 600ML';
+            }
+        }
+
+        function calcPriceFromMargin() {
+            const cost = parseFloat($('p-cost-mob').value) || 0;
+            const margin = parseFloat($('p-margin-mob').value) || 0;
+            if (cost > 0) $('p-price-main-mob').value = (cost * (1 + margin / 100)).toFixed(2);
+        }
+
+        function calcMarginFromPrice() {
+            const cost = parseFloat($('p-cost-mob').value) || 0;
+            const price = parseFloat($('p-price-main-mob').value) || 0;
+            if (cost > 0 && price > 0) $('p-margin-mob').value = (((price - cost) / cost) * 100).toFixed(2);
+        }
+
+        function onCategoryChangeMobile() {
+            const cat = $('p-cat-mob').value;
+            const expiryBox = $('expiry-fields-mob');
+            if (cat === 'Lácteos') {
+                expiryBox.classList.remove('hidden');
+            } else {
+                expiryBox.classList.add('hidden');
+                const exp = $('p-expiry-mob');
+                if (exp) exp.value = '';
+            }
+            toggleConfigMobile();
         }
 
         function toggleConfigMobile() {
-            const type = document.getElementById('p-type-mob').value;
-            document.getElementById('cigar-fields-mob').classList.toggle('hidden', type !== 'cajetilla');
-            document.getElementById('normal-fields-mob').classList.toggle('hidden', type === 'cajetilla');
+            const type = $('p-type-mob').value;
+            const category = $('p-cat-mob').value;
+            $('cigar-fields-mob').classList.add('hidden');
+            $('cajapieza-fields-mob').classList.add('hidden');
+            $('beer-fields-mob').classList.add('hidden');
+            const normalStock = $('normal-stock-wrapper-mob');
+
+            if (type === 'cajetilla') {
+                $('cigar-fields-mob').classList.remove('hidden');
+                normalStock.classList.add('hidden');
+            } else if (type === 'cajapieza') {
+                $('cajapieza-fields-mob').classList.remove('hidden');
+                normalStock.classList.add('hidden');
+                if (category === 'Cerveza') $('beer-fields-mob').classList.remove('hidden');
+            } else {
+                normalStock.classList.remove('hidden');
+                if (category === 'Cerveza') $('beer-fields-mob').classList.remove('hidden');
+            }
         }
 
-        function saveProductMobile() {
-            const name = document.getElementById('p-name-mob').value.trim();
-            if(!name) return Swal.fire('Atención', 'Nombre obligatorio', 'warning');
-            const newProduct = { id: Date.now(), code: document.getElementById('p-code-mob').value.trim(), name: name.toUpperCase(), category: document.getElementById('p-cat-mob').value, type: document.getElementById('p-type-mob').value, price: parseFloat(document.getElementById('p-price-main-mob').value) || 0, stock: parseFloat(document.getElementById('p-stock-mob').value) || 0 };
-            dbRef.once('value').then(snap => { const data = snap.val() || { products: [] }; data.products.push(newProduct); dbRef.set(data); Swal.fire('Guardado', '', 'success'); });
+        function guardarProductoMobile() {
+            if (!dbRef) return mostrarToast('No hay tienda vinculada', 'error');
+
+            const name = $('p-name-mob').value.trim();
+            if (!name) return mostrarToast('El nombre es obligatorio', 'error');
+
+            const type = $('p-type-mob').value;
+            const category = $('p-cat-mob').value;
+            const code = $('p-code-mob').value.trim();
+            const cost = parseFloat($('p-cost-mob').value) || 0;
+            const margin = parseFloat($('p-margin-mob').value) || 0;
+            const price = parseFloat($('p-price-main-mob').value) || 0;
+
+            if (price <= 0) return mostrarToast('El precio debe ser mayor a 0', 'error');
+
+            const productData = {
+                id: 'P-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6).toUpperCase(),
+                code, name: name.toUpperCase(),
+                cost, margin, price, category, type,
+                createdBy: DEVICE_ID,
+                createdAt: new Date().toISOString()
+            };
+
+            const expiry = $('p-expiry-mob').value;
+            if (category === 'Lácteos' && expiry) productData.expiryDate = expiry;
+
+            if (type === 'cajetilla') {
+                const boxPrice = parseFloat($('p-price-box-mob').value) || 0;
+                const piecePrice = parseFloat($('p-piece-price-mob').value) || 0;
+                const piecesPerBox = parseInt($('p-pieces-per-box-cigar-mob').value) || 20;
+                const stockBoxes = parseInt($('p-stock-boxes-cigar-mob').value) || 0;
+                const stockLoose = parseInt($('p-stock-loose-cigar-mob').value) || 0;
+                if (boxPrice <= 0 || piecePrice <= 0) return mostrarToast('Ingresa precio de cajetilla y cigarro', 'error');
+                productData.price = boxPrice;
+                productData.piecePrice = piecePrice;
+                productData.piecesPerBox = piecesPerBox;
+                productData.stock = (stockBoxes * piecesPerBox) + stockLoose;
+            } else if (type === 'cajapieza') {
+                const piecesPerBox = parseInt($('p-pieces-per-box-mob').value) || 24;
+                const stockBoxes = parseInt($('p-stock-boxes-mob').value) || 0;
+                const stockLoose = parseInt($('p-stock-loose-mob').value) || 0;
+                productData.piecesPerBox = piecesPerBox;
+                productData.stock = (stockBoxes * piecesPerBox) + stockLoose;
+                if (category === 'Cerveza') {
+                    const priceSix = parseFloat($('p-price-six-mob').value) || 0;
+                    const priceCaja = parseFloat($('p-price-24-mob').value) || 0;
+                    productData.priceSix = priceSix || (price * 6);
+                    productData.priceCaja = priceCaja || (price * piecesPerBox);
+                }
+            } else {
+                const stock = parseFloat($('p-stock-mob').value) || 0;
+                productData.stock = stock;
+                if (category === 'Cerveza') {
+                    const priceSix = parseFloat($('p-price-six-mob').value) || 0;
+                    const priceCaja = parseFloat($('p-price-24-mob').value) || 0;
+                    productData.priceSix = priceSix || (price * 6);
+                    productData.priceCaja = priceCaja || (price * 24);
+                }
+            }
+
+            // ✅ Verificar código duplicado ANTES de pedir PIN
+            if (code && products.some(p => p.code === code)) return mostrarToast('Código duplicado', 'error');
+
+            // Pedir PIN
+            Swal.fire({
+                title: '🔐 Autorización',
+                text: 'Ingresa el PIN del dueño para guardar',
+                input: 'password',
+                inputAttributes: {
+                    autocapitalize: 'off', autocorrect: 'off',
+                    style: 'color:#000!important; background:#fff!important; border:2px solid #cbd5e1!important; border-radius:12px!important; padding:14px!important; text-align:center; font-size:20px; letter-spacing:6px;'
+                },
+                showCancelButton: true,
+                confirmButtonText: '✅ Autorizar',
+                cancelButtonText: 'Cancelar',
+                confirmButtonColor: '#10b981',
+                preConfirm: (pin) => {
+                    const ownerPin = localStorage.getItem('ownerPin') || 'admin123';
+                    if (pin !== ownerPin) { Swal.showValidationMessage('❌ PIN incorrecto'); return false; }
+                    return true;
+                }
+            }).then(result => {
+                if (!result.isConfirmed) return;
+
+                // ✅ Anti-conflicto: usar push() para generar ID único
+                // Esto evita que dos dispositivos sobrescriban el array completo
+               dbRef.child('products').once('value').then(snap => {
+    let currentProducts = snap.val() || [];
+    if (!Array.isArray(currentProducts)) currentProducts = Object.values(currentProducts);
+    currentProducts.push(productData);
+    return dbRef.child('products').set(currentProducts);
+}).then(() => {
+                    vibrarYBeep();
+                    Swal.fire({ icon: 'success', title: '✅ Producto guardado', text: productData.name, timer: 1800, showConfirmButton: false });
+                    ['p-name-mob','p-code-mob','p-cost-mob','p-margin-mob','p-price-main-mob','p-stock-mob',
+                     'p-price-box-mob','p-piece-price-mob','p-stock-boxes-cigar-mob','p-stock-loose-cigar-mob',
+                     'p-price-six-mob','p-price-24-mob','p-stock-boxes-mob','p-stock-loose-mob','p-expiry-mob']
+                        .forEach(id => { const el = $(id); if (el) el.value = ''; });
+                    $('p-pieces-per-box-cigar-mob').value = 20;
+                    $('p-pieces-per-box-mob').value = 24;
+                    $('add-form-container').classList.add('hidden-view');
+                }).catch(err => mostrarToast('Error: ' + err.message, 'error'));
+            });
         }
-        
-        function openCheckoutMobile() { Swal.fire('Venta finalizada', 'Total procesado', 'success'); clearCartMobile(); }
+
+        // ═══════════════════════════════════════════════════════════════
+        // VER STOCK
+        // ═══════════════════════════════════════════════════════════════
+        function renderStockView() {
+            const lowStock = products.filter(p => Number(p.stock) > 0 && Number(p.stock) < 5);
+            const outOfStock = products.filter(p => Number(p.stock) <= 0);
+            const totalProducts = products.length;
+            const totalValue = products.reduce((sum, p) => sum + ((Number(p.cost) || 0) * (Number(p.stock) || 0)), 0);
+
+            $('stock-summary').innerHTML = `
+                <div class="stock-summary-card">
+                    <div class="label">📦 Total Productos</div>
+                    <div class="value">${totalProducts}</div>
+                </div>
+                <div class="stock-summary-card money">
+                    <div class="label">💰 Valor Inventario</div>
+                    <div class="value">$${totalValue.toLocaleString('es-MX', {minimumFractionDigits:2, maximumFractionDigits:2})}</div>
+                </div>
+                <div class="stock-summary-card warn">
+                    <div class="label">⚠️ Stock Bajo</div>
+                    <div class="value">${lowStock.length}</div>
+                </div>
+                <div class="stock-summary-card danger">
+                    <div class="label">❌ Agotados</div>
+                    <div class="value">${outOfStock.length}</div>
+                </div>
+            `;
+
+            let alertsHtml = '';
+            if (lowStock.length > 0 || outOfStock.length > 0) {
+                alertsHtml += `<div class="section-title"><i class="fas fa-exclamation-triangle" style="color:#f59e0b;"></i> Alertas de Stock</div>`;
+                outOfStock.forEach(p => {
+                    alertsHtml += `<div class="stock-item danger" onclick="verDetalleProducto('${p.id}')">
+                        <div class="info"><div class="name">${p.name}</div><div class="meta">${p.category || 'N/A'} · ${p.code || 'S/C'}</div></div>
+                        <div class="qty out">❌ 0</div>
+                    </div>`;
+                });
+                lowStock.forEach(p => {
+                    alertsHtml += `<div class="stock-item warn" onclick="verDetalleProducto('${p.id}')">
+                        <div class="info"><div class="name">${p.name}</div><div class="meta">${p.category || 'N/A'} · ${p.code || 'S/C'}</div></div>
+                        <div class="qty low">⚠️ ${p.stock}</div>
+                    </div>`;
+                });
+            } else {
+                alertsHtml += `<div class="card" style="text-align:center; border-color:#a7f3d0; background:#ecfdf5;">
+                    <i class="fas fa-check-circle" style="font-size:48px; color:#10b981; margin-bottom:12px;"></i>
+                    <p style="font-weight:800; color:#065f46; margin:0; font-size:15px;">¡Todo en orden!</p>
+                    <p style="font-size:12px; color:#64748b; margin:4px 0 0;">No hay productos con stock bajo</p>
+                </div>`;
+            }
+            $('stock-alerts').innerHTML = alertsHtml;
+
+            const sorted = [...products].sort((a, b) => a.name.localeCompare(b.name));
+            let allHtml = `<div class="section-title"><i class="fas fa-list" style="color:#94a3b8;"></i> Todos los productos (${totalProducts})</div>`;
+            if (sorted.length === 0) {
+                allHtml += `<div class="empty-state"><i class="fas fa-box-open"></i><p>No hay productos registrados</p></div>`;
+            } else {
+                sorted.forEach(p => {
+                    const stock = Number(p.stock) || 0;
+                    const qtyClass = stock === 0 ? 'out' : (stock < 5 ? 'low' : '');
+                    allHtml += `<div class="stock-item" onclick="verDetalleProducto('${p.id}')">
+                        <div class="info"><div class="name">${p.name}</div><div class="meta">${p.category || 'N/A'} · $${Number(p.price).toFixed(2)}</div></div>
+                        <div class="qty ${qtyClass}">${stock}</div>
+                    </div>`;
+                });
+            }
+            $('stock-all').innerHTML = allHtml;
+        }
+
+        function verDetalleProducto(productId) {
+            const p = products.find(x => String(x.id) === String(productId));
+            if (!p) return;
+            const stock = Number(p.stock) || 0;
+            const stockColor = stock === 0 ? 'var(--tienda-color)' : (stock < 5 ? '#f59e0b' : '#10b981');
+            const stockLabel = stock === 0 ? '❌ AGOTADO' : (stock < 5 ? '⚠️ STOCK BAJO' : '✅ DISPONIBLE');
+
+            let extras = '';
+            if (p.category === 'Cerveza') {
+                extras += `
+                    <div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #e5e7eb;">
+                        <span style="color:#6b7280;">🍺 Precio Six</span>
+                        <b>$${Number(p.priceSix || 0).toFixed(2)}</b>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #e5e7eb;">
+                        <span style="color:#6b7280;">📦 Precio Caja</span>
+                        <b>$${Number(p.priceCaja || 0).toFixed(2)}</b>
+                    </div>
+                `;
+            }
+            if (p.type === 'cajetilla') {
+                extras += `
+                    <div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #e5e7eb;">
+                        <span style="color:#6b7280;">🚬 Precio Cigarro</span>
+                        <b>$${Number(p.piecePrice || 0).toFixed(2)}</b>
+                    </div>
+                `;
+            }
+
+            Swal.fire({
+                title: p.name,
+                html: `
+                    <div style="text-align:left; font-size:14px;">
+                        <div style="background:#f8fafc; border-radius:14px; padding:16px; margin-bottom:12px;">
+                            <div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #e5e7eb;">
+                                <span style="color:#6b7280;">💰 Precio</span>
+                                <b style="color:var(--tienda-color); font-size:18px;">$${Number(p.price).toFixed(2)}</b>
+                            </div>
+                            <div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #e5e7eb;">
+                                <span style="color:#6b7280;">📦 Stock</span>
+                                <b style="color:${stockColor};">${stock} pzs</b>
+                            </div>
+                            <div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #e5e7eb;">
+                                <span style="color:#6b7280;">🏷️ Categoría</span>
+                                <b>${p.category || 'N/A'}</b>
+                            </div>
+                            <div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #e5e7eb;">
+                                <span style="color:#6b7280;">💵 Costo</span>
+                                <b>$${Number(p.cost || 0).toFixed(2)}</b>
+                            </div>
+                            ${extras}
+                            ${p.code ? `<div style="padding:8px 0; border-top:1px solid #e5e7eb; font-family:monospace; font-size:11px; color:#6b7280;">Código: ${p.code}</div>` : ''}
+                        </div>
+                        <div style="text-align:center; font-weight:800; color:${stockColor}; font-size:12px; letter-spacing:1px;">${stockLabel}</div>
+                    </div>
+                `,
+                confirmButtonText: 'Cerrar',
+                confirmButtonColor: '#6b7280',
+                width: '360px'
+            });
+        }
+
+        // ═══════════════════════════════════════════════════════════════
+        // UTILIDADES
+        // ═══════════════════════════════════════════════════════════════
+        function mostrarToast(mensaje, tipo = 'info') {
+            Swal.fire({
+                toast: true, position: 'top-end', icon: tipo, title: mensaje,
+                showConfirmButton: false, timer: 1800, timerProgressBar: true
+            });
+        }
+
+        console.log('✅ Carlitos Móvil v5 - Anti-conflictos para múltiples dispositivos');
+        console.log('📱 Device ID:', DEVICE_ID);
     </script>
 </body>
 </html>
