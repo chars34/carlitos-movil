@@ -457,7 +457,20 @@
             <p class="scanner-hint"><i class="fas fa-info-circle"></i> Apunta al código QR</p>
         </div>
     </div>
-
+<!-- ⭐ BANNER DE ALERTA DE CADUCIDAD -->
+<div id="expiry-toast" class="hidden-view" onclick="mostrarProductosCaducados()" style="position:fixed; bottom:80px; left:12px; right:12px; max-width:400px; margin:0 auto; background:white; border-left:4px solid #f59e0b; border-radius:16px; box-shadow:0 10px 30px rgba(0,0,0,0.2); padding:14px 16px; z-index:500; cursor:pointer; display:flex; align-items:flex-start; gap:10px;">
+    <div style="color:#f59e0b; flex-shrink:0; margin-top:2px;">
+        <i class="fas fa-exclamation-triangle" style="font-size:20px;"></i>
+    </div>
+    <div style="flex:1; min-width:0;">
+        <h3 style="font-weight:900; color:#0f172a; font-size:13px; margin:0 0 4px 0; text-transform:uppercase; letter-spacing:0.5px;">Alerta de Caducidad</h3>
+        <p id="expiry-toast-msg" style="font-size:12px; color:#64748b; margin:0; line-height:1.4;">Tienes 0 productos próximos a vencer.</p>
+        <p style="font-size:10px; color:#94a3b8; margin:4px 0 0 0;">👆 Toca para ver detalles</p>
+    </div>
+    <button onclick="event.stopPropagation(); cerrarAlertaCaducidad(event)" style="background:none; border:none; color:#94a3b8; cursor:pointer; padding:4px; flex-shrink:0;">
+        <i class="fas fa-times" style="font-size:16px;"></i>
+    </button>
+</div>
     <!-- ═══════════ APP PRINCIPAL ═══════════ -->
     <div id="app-main" class="hidden-view">
 
@@ -526,187 +539,214 @@
                 <i class="fas fa-chevron-right menu-arrow"></i>
             </button>
         </div>
-
-        <!-- VISTA: SCAN -->
-        <div id="view-scan" class="view-content hidden-view">
-            <div class="card">
-                <h2><i class="fas fa-barcode" style="color:#3b82f6;"></i> Escanear Producto</h2>
-                <p class="card-desc">Apunta la cámara al código de barras. La cámara se cierra al detectar el producto.</p>
-                <button class="action-btn blue" onclick="iniciarEscaneoContinuo('scan')">
-                    <i class="fas fa-camera"></i> Abrir cámara
-                </button>
-            </div>
-            <div id="scan-result"></div>
+<!-- VISTA: SCAN -->
+<div id="view-scan" class="view-content hidden-view">
+    <div class="card">
+        <h2><i class="fas fa-barcode" style="color:#3b82f6;"></i> Escanear Producto</h2>
+        <p class="card-desc">Busca por nombre o código, o escanea con la cámara.</p>
+        
+        <!-- ⭐ BUSCADOR CON CÁMARA -->
+        <div style="position:relative; display:flex; gap:8px;">
+            <input type="text" id="scan-search" placeholder="Buscar por nombre o código..." class="input-field" style="padding-left:44px; margin-bottom:0; flex:1;" oninput="buscarProductoScan(this.value)">
+            <i class="fas fa-search" style="position:absolute; left:16px; top:18px; color:#94a3b8;"></i>
+            <button onclick="iniciarEscaneoContinuo('scan')" style="width:52px; height:52px; background:#0f172a; color:white; border-radius:14px; border:none; cursor:pointer; flex-shrink:0; display:flex; align-items:center; justify-content:center;">
+                <i class="fas fa-barcode" style="font-size:20px;"></i>
+            </button>
         </div>
-
-        <!-- VISTA: PRICE -->
-        <div id="view-price" class="view-content hidden-view">
-            <div class="card">
-                <h2><i class="fas fa-tag" style="color:#f59e0b;"></i> Cambiar Precio</h2>
-                <p class="card-desc">Escanea el producto. La cámara se cierra al encontrarlo y podrás ingresar el nuevo precio.</p>
-                <button class="action-btn amber" onclick="iniciarEscaneoContinuo('price')">
-                    <i class="fas fa-camera"></i> Escanear producto
-                </button>
-            </div>
-            <div id="price-result"></div>
+    </div>
+    
+    <!-- Resultados de búsqueda (se llena dinámicamente) -->
+    <div id="scan-search-results"></div>
+    
+    <!-- Resultados del escaneo (oculto hasta escanear) -->
+    <div id="scan-result"></div>
+</div><!-- VISTA: PRICE -->
+<div id="view-price" class="view-content hidden-view">
+    <div class="card">
+        <h2><i class="fas fa-tag" style="color:#f59e0b;"></i> Cambiar Precio</h2>
+        <p class="card-desc">Busca por nombre o código, o escanea con la cámara.</p>
+        
+        <!-- ⭐ BUSCADOR CON CÁMARA -->
+        <div style="position:relative; display:flex; gap:8px;">
+            <input type="text" id="price-search" placeholder="Buscar por nombre o código..." class="input-field" style="padding-left:44px; margin-bottom:0; flex:1;" oninput="buscarProductoPrice(this.value)">
+            <i class="fas fa-search" style="position:absolute; left:16px; top:18px; color:#94a3b8;"></i>
+            <button onclick="iniciarEscaneoContinuo('price')" style="width:52px; height:52px; background:#0f172a; color:white; border-radius:14px; border:none; cursor:pointer; flex-shrink:0; display:flex; align-items:center; justify-content:center;">
+                <i class="fas fa-barcode" style="font-size:20px;"></i>
+            </button>
         </div>
+    </div>
+    
+    <!-- Resultados de búsqueda -->
+    <div id="price-search-results"></div>
+    
+    <!-- Resultados del escaneo (formulario de cambio de precio) -->
+    <div id="price-result"></div>
+</div>
+      <!-- VISTA: ADD -->
+<div id="view-add" class="view-content hidden-view">
+    <div class="card">
+        <h2><i class="fas fa-plus-circle" style="color:#10b981;"></i> Nuevo Producto</h2>
+        <p class="card-desc">Busca por nombre o código, o escanea con la cámara.</p>
+        
+        <!-- ⭐ BUSCADOR CON CÁMARA -->
+        <div style="position:relative; display:flex; gap:8px;">
+            <input type="text" id="add-search" placeholder="Buscar por nombre o código..." class="input-field" style="padding-left:44px; margin-bottom:0; flex:1;" oninput="buscarProductoAdd(this.value)">
+            <i class="fas fa-search" style="position:absolute; left:16px; top:18px; color:#94a3b8;"></i>
+            <button onclick="iniciarEscaneoContinuo('add')" style="width:52px; height:52px; background:#0f172a; color:white; border-radius:14px; border:none; cursor:pointer; flex-shrink:0; display:flex; align-items:center; justify-content:center;">
+                <i class="fas fa-barcode" style="font-size:20px;"></i>
+            </button>
+        </div>
+    </div>
+    
+    <!-- Resultados de búsqueda -->
+    <div id="add-search-results"></div>
 
-        <!-- VISTA: ADD -->
-        <div id="view-add" class="view-content hidden-view">
-            <div class="card">
-                <h2><i class="fas fa-plus-circle" style="color:#10b981;"></i> Nuevo Producto</h2>
-                <p class="card-desc">Escanea el código y completa los datos del producto.</p>
-                <button class="action-btn green" onclick="iniciarEscaneoContinuo('add')">
-                    <i class="fas fa-camera"></i> Escanear código de barras
+    <!-- ⭐ FORMULARIO PARA NUEVO PRODUCTO (OCULTO POR DEFECTO) -->
+    <div id="add-form-container" class="hidden-view">
+        <div class="card">
+            <label class="section-label">Código de Barras</label>
+            <div style="display:flex; gap:10px; align-items:center; margin-bottom:14px;">
+                <input type="text" id="p-code-mob" placeholder="Escribe o escanea" class="input-field" style="margin-bottom:0; text-transform:uppercase; font-family:monospace;">
+                <button onclick="iniciarEscaneoContinuo('add')" style="width:52px; height:52px; background:#0f172a; color:white; border-radius:14px; border:none; cursor:pointer; flex-shrink:0; display:flex; align-items:center; justify-content:center;">
+                    <i class="fas fa-barcode" style="font-size:20px;"></i>
                 </button>
             </div>
 
-            <div id="add-form-container" class="hidden-view">
-                <div class="card">
-                    <label class="section-label">Código de Barras</label>
-                    <div style="display:flex; gap:10px; align-items:center; margin-bottom:14px;">
-                        <input type="text" id="p-code-mob" placeholder="Escribe o escanea" class="input-field" style="margin-bottom:0; text-transform:uppercase; font-family:monospace;">
-                        <button onclick="iniciarEscaneoContinuo('add')" style="width:52px; height:52px; background:#0f172a; color:white; border-radius:14px; border:none; cursor:pointer; flex-shrink:0; display:flex; align-items:center; justify-content:center;">
-                            <i class="fas fa-barcode" style="font-size:20px;"></i>
-                        </button>
+            <label class="section-label">Nombre del Producto</label>
+            <input type="text" id="p-name-mob" placeholder="EJ: COCA COLA 600ML" class="input-field" style="text-transform:uppercase;" required>
+
+            <label class="section-label">Categoría</label>
+            <select id="p-cat-mob" class="select-field" onchange="onCategoryChangeMobile()">
+                <optgroup label="Bebidas y Licores">
+                    <option value="Refrescos">Refrescos</option>
+                    <option value="Alcohol">Alcohol</option>
+                    <option value="Cerveza">Cerveza</option>
+                </optgroup>
+                <optgroup label="Alimentos">
+                    <option value="Sabritas">Sabritas</option>
+                    <option value="Galletas">Galletas</option>
+                    <option value="Frutas">Frutas</option>
+                    <option value="Lácteos">Lácteos</option>
+                    <option value="Alimentos">Alimentos</option>
+                    <option value="Dulces">Dulces</option>
+                    <option value="Especias">Especias</option>
+                </optgroup>
+                <optgroup label="Higiene y Hogar">
+                    <option value="Higiene">Higiene</option>
+                    <option value="Limpieza">Limpieza</option>
+                </optgroup>
+                <optgroup label="Otros">
+                    <option value="Cigarros">Cigarros</option>
+                    <option value="Ferretería">Ferretería</option>
+                    <option value="Celular">Celular</option>
+                    <option value="Eléctrico">Eléctrico</option>
+                    <option value="Farmacia">Farmacia</option>
+                    <option value="papeleria">Papeleria</option>
+                    <option value="Otros">Otros</option>
+                </optgroup>
+            </select>
+
+            <div id="expiry-fields-mob" class="hidden config-box" style="background:#fef3c7; border-color:#fde68a;">
+                <div class="title" style="border-color:#fcd34d;">
+                    <i class="fas fa-calendar-alt"></i> Fecha de Caducidad
+                </div>
+                <input type="date" id="p-expiry-mob" class="config-input" style="text-align:left;">
+            </div>
+
+            <label class="section-label">Tipo de Venta</label>
+            <select id="p-type-mob" class="select-field" onchange="toggleConfigMobile()">
+                <option value="pieza">Por Pieza</option>
+                <option value="granel">Por kilos/litros</option>
+                <option value="cajapieza">Caja / Pieza</option>
+                <option value="cajetilla">Cajetilla / Cigarro</option>
+            </select>
+
+            <div id="cajapieza-fields-mob" class="hidden config-box">
+                <div class="title"><i class="fas fa-boxes"></i> Configuración de Caja/Pzs</div>
+                <div style="margin-bottom:12px;">
+                    <label class="config-label">Pzs por caja</label>
+                    <input type="number" id="p-pieces-per-box-mob" min="1" value="24" placeholder="24" class="config-input">
+                </div>
+                <div class="config-grid" style="border-top:1px dashed #fcd34d; padding-top:12px;">
+                    <div>
+                        <label class="config-label">Cajas en stock</label>
+                        <input type="number" id="p-stock-boxes-mob" min="0" placeholder="0" class="config-input">
                     </div>
-
-                    <label class="section-label">Nombre del Producto</label>
-                    <input type="text" id="p-name-mob" placeholder="EJ: COCA COLA 600ML" class="input-field" style="text-transform:uppercase;" required>
-
-                    <label class="section-label">Categoría</label>
-                    <select id="p-cat-mob" class="select-field" onchange="onCategoryChangeMobile()">
-                        <optgroup label="Bebidas y Licores">
-                            <option value="Refrescos">Refrescos</option>
-                            <option value="Alcohol">Alcohol</option>
-                            <option value="Cerveza">Cerveza</option>
-                        </optgroup>
-                        <optgroup label="Alimentos">
-                            <option value="Sabritas">Sabritas</option>
-                            <option value="Galletas">Galletas</option>
-                            <option value="Frutas">Frutas</option>
-                            <option value="Lácteos">Lácteos</option>
-                            <option value="Alimentos">Alimentos</option>
-                            <option value="Dulces">Dulces</option>
-                            <option value="Especias">Especias</option>
-                        </optgroup>
-                        <optgroup label="Higiene y Hogar">
-                            <option value="Higiene">Higiene</option>
-                            <option value="Limpieza">Limpieza</option>
-                        </optgroup>
-                        <optgroup label="Otros">
-                            <option value="Cigarros">Cigarros</option>
-                            <option value="Ferretería">Ferretería</option>
-                            <option value="Celular">Celular</option>
-                            <option value="Eléctrico">Eléctrico</option>
-                            <option value="Farmacia">Farmacia</option>
-                            <option value="papeleria">Papeleria</option>
-                            <option value="Otros">Otros</option>
-                        </optgroup>
-                    </select>
-
-                    <div id="expiry-fields-mob" class="hidden config-box" style="background:#fef3c7; border-color:#fde68a;">
-                        <div class="title" style="border-color:#fcd34d;">
-                            <i class="fas fa-calendar-alt"></i> Fecha de Caducidad
-                        </div>
-                        <input type="date" id="p-expiry-mob" class="config-input" style="text-align:left;">
+                    <div>
+                        <label class="config-label">Piezas sueltas</label>
+                        <input type="number" id="p-stock-loose-mob" min="0" placeholder="0" class="config-input">
                     </div>
-
-                    <label class="section-label">Tipo de Venta</label>
-                    <select id="p-type-mob" class="select-field" onchange="toggleConfigMobile()">
-                        <option value="pieza">Por Pieza</option>
-                        <option value="granel">Por kilos/litros</option>
-                        <option value="cajapieza">Caja / Pieza</option>
-                        <option value="cajetilla">Cajetilla / Cigarro</option>
-                    </select>
-
-                    <div id="cajapieza-fields-mob" class="hidden config-box">
-                        <div class="title"><i class="fas fa-boxes"></i> Configuración de Caja/Pzs</div>
-                        <div style="margin-bottom:12px;">
-                            <label class="config-label">Pzs por caja</label>
-                            <input type="number" id="p-pieces-per-box-mob" min="1" value="24" placeholder="24" class="config-input">
-                        </div>
-                        <div class="config-grid" style="border-top:1px dashed #fcd34d; padding-top:12px;">
-                            <div>
-                                <label class="config-label">Cajas en stock</label>
-                                <input type="number" id="p-stock-boxes-mob" min="0" placeholder="0" class="config-input">
-                            </div>
-                            <div>
-                                <label class="config-label">Piezas sueltas</label>
-                                <input type="number" id="p-stock-loose-mob" min="0" placeholder="0" class="config-input">
-                            </div>
-                        </div>
-                    </div>
-
-                    <div id="cigar-fields-mob" class="hidden config-box">
-                        <div class="title"><i class="fas fa-boxes"></i> Configuración de Cajetilla / Cigarro</div>
-                        <div class="config-grid three" style="margin-bottom:12px;">
-                            <div>
-                                <label class="config-label">Precio x Cajetilla</label>
-                                <input type="number" id="p-price-box-mob" step="0.01" min="0" placeholder="0.00" class="config-input">
-                            </div>
-                            <div>
-                                <label class="config-label">Precio x Cigarro</label>
-                                <input type="number" id="p-piece-price-mob" step="0.01" min="0" placeholder="0.00" class="config-input">
-                            </div>
-                            <div>
-                                <label class="config-label">Cigarros x Cajetilla</label>
-                                <input type="number" id="p-pieces-per-box-cigar-mob" min="1" value="20" placeholder="20" class="config-input">
-                            </div>
-                        </div>
-                        <div class="config-grid" style="border-top:1px dashed #fcd34d; padding-top:12px;">
-                            <div>
-                                <label class="config-label">Cajetillas en Stock</label>
-                                <input type="number" id="p-stock-boxes-cigar-mob" min="0" placeholder="0" class="config-input">
-                            </div>
-                            <div>
-                                <label class="config-label">Cigarros Sueltos</label>
-                                <input type="number" id="p-stock-loose-cigar-mob" min="0" placeholder="0" class="config-input">
-                            </div>
-                        </div>
-                    </div>
-
-                    <div id="beer-fields-mob" class="hidden config-box" style="background:#fef3c7; border-color:#fcd34d;">
-                        <div class="title"><i class="fas fa-beer"></i> Precios Especiales Cerveza</div>
-                        <div class="config-grid">
-                            <div>
-                                <label class="config-label">Precio x Six</label>
-                                <input type="number" id="p-price-six-mob" step="0.01" min="0" placeholder="0.00" class="config-input">
-                            </div>
-                            <div>
-                                <label class="config-label">Precio x Caja</label>
-                                <input type="number" id="p-price-24-mob" step="0.01" min="0" placeholder="0.00" class="config-input">
-                            </div>
-                        </div>
-                    </div>
-
-                    <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-bottom:14px;">
-                        <div>
-                            <label class="section-label" style="color:#64748b;">Costo</label>
-                            <input type="number" id="p-cost-mob" step="0.01" min="0" placeholder="0.00" class="input-field" style="text-align:right; margin-bottom:0;" oninput="calcPriceFromMargin()">
-                        </div>
-                        <div>
-                            <label class="section-label" style="color:#d97706;">Margen %</label>
-                            <input type="number" id="p-margin-mob" step="0.01" min="0" placeholder="0" class="input-field" style="text-align:right; margin-bottom:0; background:#fef3c7; border-color:#fde68a; color:#92400e;" oninput="calcPriceFromMargin()">
-                        </div>
-                        <div>
-                            <label class="section-label" style="color:var(--tienda-color);">Precio</label>
-                            <input type="number" id="p-price-main-mob" step="0.01" min="0" placeholder="0.00" class="input-field" style="text-align:right; margin-bottom:0; background:#fee2e2; border-color:#fecaca; color:var(--tienda-color); font-weight:800;" oninput="calcMarginFromPrice()">
-                        </div>
-                    </div>
-
-                    <div id="normal-stock-wrapper-mob">
-                        <label class="section-label" style="text-align:center;">Unidades en Stock</label>
-                        <input type="number" id="p-stock-mob" placeholder="0.000" class="input-field" step="0.001" min="0" style="text-align:center; font-size:20px; font-weight:800;">
-                    </div>
-
-                    <button class="action-btn primary" onclick="guardarProductoMobile()" style="margin-top:8px;">
-                        <i class="fas fa-save"></i> Guardar Producto
-                    </button>
                 </div>
             </div>
-        </div>
 
+            <div id="cigar-fields-mob" class="hidden config-box">
+                <div class="title"><i class="fas fa-boxes"></i> Configuración de Cajetilla / Cigarro</div>
+                <div class="config-grid three" style="margin-bottom:12px;">
+                    <div>
+                        <label class="config-label">Precio x Cajetilla</label>
+                        <input type="number" id="p-price-box-mob" step="0.01" min="0" placeholder="0.00" class="config-input">
+                    </div>
+                    <div>
+                        <label class="config-label">Precio x Cigarro</label>
+                        <input type="number" id="p-piece-price-mob" step="0.01" min="0" placeholder="0.00" class="config-input">
+                    </div>
+                    <div>
+                        <label class="config-label">Cigarros x Cajetilla</label>
+                        <input type="number" id="p-pieces-per-box-cigar-mob" min="1" value="20" placeholder="20" class="config-input">
+                    </div>
+                </div>
+                <div class="config-grid" style="border-top:1px dashed #fcd34d; padding-top:12px;">
+                    <div>
+                        <label class="config-label">Cajetillas en Stock</label>
+                        <input type="number" id="p-stock-boxes-cigar-mob" min="0" placeholder="0" class="config-input">
+                    </div>
+                    <div>
+                        <label class="config-label">Cigarros Sueltos</label>
+                        <input type="number" id="p-stock-loose-cigar-mob" min="0" placeholder="0" class="config-input">
+                    </div>
+                </div>
+            </div>
+
+            <div id="beer-fields-mob" class="hidden config-box" style="background:#fef3c7; border-color:#fcd34d;">
+                <div class="title"><i class="fas fa-beer"></i> Precios Especiales Cerveza</div>
+                <div class="config-grid">
+                    <div>
+                        <label class="config-label">Precio x Six</label>
+                        <input type="number" id="p-price-six-mob" step="0.01" min="0" placeholder="0.00" class="config-input">
+                    </div>
+                    <div>
+                        <label class="config-label">Precio x Caja</label>
+                        <input type="number" id="p-price-24-mob" step="0.01" min="0" placeholder="0.00" class="config-input">
+                    </div>
+                </div>
+            </div>
+
+            <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-bottom:14px;">
+                <div>
+                    <label class="section-label" style="color:#64748b;">Costo</label>
+                    <input type="number" id="p-cost-mob" step="0.01" min="0" placeholder="0.00" class="input-field" style="text-align:right; margin-bottom:0;" oninput="calcPriceFromMargin()">
+                </div>
+                <div>
+                    <label class="section-label" style="color:#d97706;">Margen %</label>
+                    <input type="number" id="p-margin-mob" step="0.01" min="0" placeholder="0" class="input-field" style="text-align:right; margin-bottom:0; background:#fef3c7; border-color:#fde68a; color:#92400e;" oninput="calcPriceFromMargin()">
+                </div>
+                <div>
+                    <label class="section-label" style="color:var(--tienda-color);">Precio</label>
+                    <input type="number" id="p-price-main-mob" step="0.01" min="0" placeholder="0.00" class="input-field" style="text-align:right; margin-bottom:0; background:#fee2e2; border-color:#fecaca; color:var(--tienda-color); font-weight:800;" oninput="calcMarginFromPrice()">
+                </div>
+            </div>
+
+            <div id="normal-stock-wrapper-mob">
+                <label class="section-label" style="text-align:center;">Unidades en Stock</label>
+                <input type="number" id="p-stock-mob" placeholder="0.000" class="input-field" step="0.001" min="0" style="text-align:center; font-size:20px; font-weight:800;">
+            </div>
+
+            <button class="action-btn primary" onclick="guardarProductoMobile()" style="margin-top:8px;">
+                <i class="fas fa-save"></i> Guardar Producto
+            </button>
+        </div>
+    </div>
+</div>
         <!-- VISTA: INVENTARIO (MODIFICAR STOCK) -->
         <div id="view-inventory" class="view-content hidden-view">
             <div class="card">
@@ -873,7 +913,160 @@
             }
             meta.setAttribute('content', color);
         }
+// ═══════════════════════════════════════════════════════════
+// 🗓️ SISTEMA DE ALERTAS DE CADUCIDAD
+// ═══════════════════════════════════════════════════════════
+let alertaCaducidadCerrada = false;
 
+// ⭐ Resetear la alerta al cerrar sesión o volver al menú
+function resetearAlertaCaducidad() {
+    alertaCaducidadCerrada = false;
+    console.log("🔄 Alerta de caducidad reseteada");
+}
+
+// ⭐ Cerrar la alerta temporalmente
+function cerrarAlertaCaducidad(e) {
+    if (e) {
+        e.stopPropagation();
+        e.preventDefault();
+    }
+    alertaCaducidadCerrada = true;
+    const toast = document.getElementById('expiry-toast');
+    if (toast) {
+        toast.classList.add('hidden-view');
+        toast.style.display = 'none';
+    }
+    console.log("✅ Alerta de caducidad cerrada");
+}
+
+// ⭐ Verificar productos próximos a caducar
+function checkExpiryAlerts() {
+    if (alertaCaducidadCerrada) {
+        console.log("⏸️ Alerta de caducidad ya cerrada por el usuario");
+        return;
+    }
+    
+    const toast = document.getElementById('expiry-toast');
+    const msg = document.getElementById('expiry-toast-msg');
+    if (!toast || !msg) return;
+    
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+    
+    // ⭐ Filtrar productos lácteos que vencen en los próximos 7 días (o ya vencidos)
+    const porVencer = (products || []).filter(p => {
+        if (!p.expiryDate) return false;
+        
+        // Solo lácteos (con o sin acento)
+        const categoria = String(p.category || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        if (categoria !== "lacteos") return false;
+        
+        const fechaExp = new Date(p.expiryDate + "T00:00:00");
+        const diasRestantes = Math.ceil((fechaExp - hoy) / 864e5);
+        return diasRestantes <= 7;
+    });
+    
+    if (porVencer.length > 0) {
+        msg.innerHTML = 'Tienes <strong style="color:#dc2626; font-size:14px;">' + porVencer.length + '</strong> producto(s) vencido(s) o por vencer.';
+        toast.classList.remove('hidden-view');
+        toast.style.display = 'flex';
+        console.log('⚠️ ' + porVencer.length + ' productos próximos a caducar');
+    } else {
+        toast.classList.add('hidden-view');
+        toast.style.display = 'none';
+    }
+}
+
+// ⭐ Mostrar modal con productos caducados
+function mostrarProductosCaducados() {
+    const toast = document.getElementById('expiry-toast');
+    if (toast) {
+        toast.classList.add('hidden-view');
+        toast.style.display = 'none';
+    }
+    
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+    const limite = new Date(hoy);
+    limite.setDate(limite.getDate() + 7);
+    
+    // Filtrar productos lácteos por vencer o vencidos
+    const productosAlerta = (products || []).filter(p => {
+        if (!p.expiryDate) return false;
+        const categoria = String(p.category || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        if (categoria !== "lacteos") return false;
+        const fechaExp = new Date(p.expiryDate + "T00:00:00");
+        return fechaExp <= limite;
+    });
+    
+    // Ordenar por fecha (más próximos primero)
+    productosAlerta.sort((a, b) => new Date(a.expiryDate) - new Date(b.expiryDate));
+    
+    let html = '<div style="text-align:left; max-height:340px; overflow-y:auto; padding:2px;">';
+    
+    if (productosAlerta.length === 0) {
+        html += '<div style="text-align:center; padding:30px 20px; color:#94a3b8;">' +
+            '<i class="fas fa-check-circle" style="font-size:44px; color:#10b981; margin-bottom:12px;"></i>' +
+            '<p style="font-weight:800; margin:0;">¡Todo en orden!</p>' +
+            '<p style="font-size:12px; margin:6px 0 0 0;">No hay lácteos próximos a vencer.</p>' +
+            '</div>';
+    } else {
+        productosAlerta.forEach(p => {
+            const fechaExp = new Date(p.expiryDate + "T00:00:00");
+            const diasRestantes = Math.ceil((fechaExp - hoy) / 864e5);
+            
+            let colorBg, colorTexto, icono, estado;
+            if (diasRestantes < 0) {
+                colorBg = '#fee2e2';
+                colorTexto = '#991b1b';
+                icono = 'fa-times-circle';
+                estado = 'VENCIDO hace ' + Math.abs(diasRestantes) + ' día(s)';
+            } else if (diasRestantes === 0) {
+                colorBg = '#fee2e2';
+                colorTexto = '#991b1b';
+                icono = 'fa-exclamation-circle';
+                estado = 'VENCE HOY';
+            } else if (diasRestantes <= 3) {
+                colorBg = '#fef3c7';
+                colorTexto = '#92400e';
+                icono = 'fa-exclamation-triangle';
+                estado = 'Vence en ' + diasRestantes + ' día(s)';
+            } else {
+                colorBg = '#fef9c3';
+                colorTexto = '#854d0e';
+                icono = 'fa-clock';
+                estado = 'Vence en ' + diasRestantes + ' día(s)';
+            }
+            
+            const stock = Number(p.stock) || 0;
+            
+            html += '<div style="background:' + colorBg + '; border-left:4px solid ' + colorTexto + '; border-radius:12px; padding:12px; margin-bottom:8px;">' +
+                '<div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">' +
+                '<div style="flex:1; min-width:0;">' +
+                '<div style="font-weight:900; color:#0f172a; font-size:13px; text-transform:uppercase; margin:0 0 4px 0;">' + escapeHtml(p.name) + '</div>' +
+                '<div style="font-size:11px; color:' + colorTexto + '; font-weight:800;">' +
+                '<i class="fas ' + icono + '"></i> ' + estado +
+                '</div>' +
+                '<div style="font-size:11px; color:#64748b; margin-top:4px;">' +
+                '📅 ' + p.expiryDate + ' &nbsp;|&nbsp; 📦 Stock: ' + stock + ' pzs' +
+                '</div>' +
+                '</div>' +
+                '</div>' +
+                '</div>';
+        });
+    }
+    
+    html += '</div>';
+    
+    Swal.fire({
+        title: '<span style="font-weight:900; text-transform:uppercase; font-size:18px;">🗓️ Alertas de Caducidad</span>',
+        html: html,
+        icon: productosAlerta.length > 0 ? 'warning' : 'success',
+        confirmButtonText: 'Entendido',
+        confirmButtonColor: '#dc2626',
+        width: '420px'
+    });
+}
         function oscurecerColor(hex, porcentaje) {
             const num = parseInt(hex.replace('#', ''), 16);
             const r = Math.max(0, Math.floor((num >> 16) - 255 * (porcentaje / 100)));
@@ -898,110 +1091,184 @@
             if (demoBanner) demoBanner.classList.add("hidden-view");
         }
 
-        function imprimirEtiquetaLocal(producto) {
-            const nombre = (producto.name || "PRODUCTO").toUpperCase();
-            const precio = Number(producto.price || 0).toFixed(2);
-            const codigo = producto.code || "";
-            const tiendaNombre = (TIENDA_ACTUAL && TIENDA_ACTUAL.nombre) ? TIENDA_ACTUAL.nombre.toUpperCase() : "MI TIENDA";
-            
-            console.log("🖨️ [RAWBT] Preparando etiqueta:", nombre, "$" + precio);
-            
-            const ESC = '\x1B';
-            const GS  = '\x1D';
-            const CENTRO = ESC + 'a' + '\x01';
-            const NORMAL    = ESC + '!' + '\x00';
-            const DOBLE_ALT = ESC + '!' + '\x10';
-            const DOBLE_TOT = ESC + '!' + '\x30';
-            const NEGRITA_ON  = ESC + 'E' + '\x01';
-            const NEGRITA_OFF = ESC + 'E' + '\x00';
-            const INICIALIZAR = ESC + '@';
-            const CORTAR      = GS + 'V' + '\x00';
-            
-            let ticket = '';
-            ticket += INICIALIZAR;
-            ticket += CENTRO;
-            ticket += NORMAL;
-            ticket += tiendaNombre + '\n';
-            ticket += NEGRITA_ON;
-            
-            if (nombre.length <= 12) ticket += DOBLE_TOT;
-            else ticket += DOBLE_ALT;
-            
-            if (nombre.length > 24) {
-                const mitad = Math.floor(nombre.length / 2);
-                const espacioCerca = nombre.lastIndexOf(' ', mitad);
-                const corte = espacioCerca > 0 ? espacioCerca : mitad;
-                ticket += nombre.substring(0, corte) + '\n';
-                ticket += nombre.substring(corte).trim() + '\n';
+      function imprimirEtiquetaLocal(producto) {
+    // ⭐ NORMALIZAR ACENTOS: JABÓN → JABON, NIÑO → NINO, etc.
+    let nombre = (producto.name || "PRODUCTO").toUpperCase();
+    nombre = nombre
+        .normalize('NFD')                          // Descompone los caracteres
+        .replace(/[\u0300-\u036f]/g, '')           // Elimina los diacríticos (acentos)
+        .replace(/Ñ/g, 'N')                        // La Ñ no se descompone, la reemplazamos manual
+        .replace(/ñ/g, 'N')
+        .replace(/[^A-Z0-9\s\-\.\,\(\)\$\#\/]/g, ''); // Elimina cualquier otro carácter raro
+    
+    const precio = Number(producto.price || 0).toFixed(2);
+    
+    // ═══════════════════════════════════════════════════════════
+    // COMANDOS ESC/POS
+    // ═══════════════════════════════════════════════════════════
+    const ESC = '\x1B';
+    const GS  = '\x1D';
+    const LF  = '\x0A';
+    
+    const INICIALIZAR   = ESC + '@';                  // Reset
+    const CENTRO        = ESC + 'a' + '\x01';         // Centrar
+    const NORMAL        = ESC + '!' + '\x00';         // Tamaño normal
+    const DOBLE_ALTURA  = ESC + '!' + '\x10';         // Doble altura
+    const DOBLE_TODO    = ESC + '!' + '\x30';         // Doble ancho + alto
+    const NEGRITA_ON    = ESC + 'E' + '\x01';
+    const NEGRITA_OFF   = ESC + 'E' + '\x00';
+    const CORTAR        = GS + 'V' + '\x00';
+    
+    // ═══════════════════════════════════════════════════════════
+    // CONSTRUIR LA ETIQUETA
+    // ═══════════════════════════════════════════════════════════
+    let ticket = '';
+    
+    ticket += INICIALIZAR;
+    
+    // Línea superior
+    ticket += CENTRO;
+    ticket += NORMAL;
+    ticket += '--------------------------------' + LF;
+    
+    // NOMBRE DEL PRODUCTO
+    ticket += CENTRO;
+    ticket += NEGRITA_ON;
+    
+    if (nombre.length <= 12) {
+        ticket += DOBLE_TODO;
+    } else if (nombre.length <= 20) {
+        ticket += DOBLE_ALTURA;
+    } else {
+        ticket += NORMAL;
+    }
+    
+    if (nombre.length > 22) {
+        const mitad = Math.floor(nombre.length / 2);
+        const espacioCerca = nombre.lastIndexOf(' ', mitad);
+        const corte = espacioCerca > 0 ? espacioCerca : mitad;
+        ticket += nombre.substring(0, corte) + LF;
+        ticket += nombre.substring(corte).trim() + LF;
+    } else {
+        ticket += nombre + LF;
+    }
+    
+    ticket += NEGRITA_OFF;
+    ticket += NORMAL;
+    
+    // PRECIO
+    ticket += CENTRO;
+    ticket += NORMAL;
+    ticket += 'PRECIO' + LF;
+    
+    ticket += CENTRO;
+    ticket += NEGRITA_ON;
+    ticket += DOBLE_TODO;
+    ticket += '$' + precio + LF;
+    ticket += NEGRITA_OFF;
+    ticket += NORMAL;
+    
+    // Línea inferior
+    ticket += CENTRO;
+    ticket += NORMAL;
+    ticket += '--------------------------------' + LF;
+    
+    ticket += LF + LF;
+    ticket += CORTAR;
+    
+    // ═══════════════════════════════════════════════════════════
+    // ENVIAR A RAWBT
+    // ═══════════════════════════════════════════════════════════
+    try {
+        const ticketBase64 = btoa(unescape(encodeURIComponent(ticket)));
+        const urlRawBT = "rawbt:base64," + ticketBase64;
+        
+        console.log('🖨️ Imprimiendo:', nombre, '| $' + precio);
+        
+        const rawbtInstalada = localStorage.getItem('rawbtInstalada') === 'true';
+        
+        window.location.href = urlRawBT;
+        
+        setTimeout(() => {
+            if (rawbtInstalada) {
+                mostrarToast("🖨️ Imprimiendo etiqueta...", "success");
             } else {
-                ticket += nombre + '\n';
-            }
-            
-            ticket += NEGRITA_OFF;
-            ticket += NORMAL;
-            ticket += '--------------------------------\n';
-            ticket += CENTRO;
-            ticket += NORMAL;
-            ticket += 'PRECIO\n';
-            ticket += NEGRITA_ON;
-            ticket += DOBLE_TOT;
-            ticket += '$' + precio + '\n';
-            ticket += NEGRITA_OFF;
-            ticket += NORMAL;
-            
-            if (codigo && codigo.length >= 8) {
-                ticket += CENTRO;
-                ticket += '\n';
-                ticket += GS + 'h' + '\x40';
-                ticket += GS + 'w' + '\x02';
-                ticket += GS + 'k' + '\x49' + codigo.length + codigo;
-                ticket += '\n';
-                ticket += NORMAL;
-                ticket += codigo + '\n';
-            }
-            
-            ticket += '\n\n';
-            ticket += CORTAR;
-            
-            try {
-                const ticketBase64 = btoa(unescape(encodeURIComponent(ticket)));
-                const urlRawBT = "rawbt:base64," + ticketBase64;
-                
-                const tiempoInicio = Date.now();
-                let appAbierta = false, blurDetectado = false, visibilityDetectada = false, modalMostrado = false;
-                
-                const onBlur = () => { blurDetectado = true; appAbierta = true; };
-                window.addEventListener('blur', onBlur);
-                const onVis = () => { if (document.hidden) { visibilityDetectada = true; appAbierta = true; } };
-                document.addEventListener('visibilitychange', onVis);
-                const onPageHide = () => { appAbierta = true; };
-                window.addEventListener('pagehide', onPageHide);
-                const onFocus = () => { if (Date.now() - tiempoInicio > 1000) appAbierta = true; };
-                window.addEventListener('focus', onFocus);
-                
-                window.location.href = urlRawBT;
-                
-                setTimeout(() => {
-                    window.removeEventListener('blur', onBlur);
-                    document.removeEventListener('visibilitychange', onVis);
-                    window.removeEventListener('pagehide', onPageHide);
-                    window.removeEventListener('focus', onFocus);
-                    
-                    if (appAbierta || blurDetectado || visibilityDetectada) {
-                        mostrarToast("🖨️ Enviando a RawBT...", "success");
-                    } else if (localStorage.getItem('rawbtInstalada') === 'true') {
-                        mostrarToast("🖨️ Enviando a RawBT...", "success");
-                    } else if (!modalMostrado) {
-                        modalMostrado = true;
-                        mostrarModalDescargaRawBT(producto);
-                    }
-                }, 5000);
-            } catch (error) {
-                console.error("❌ [RAWBT] Error:", error);
                 mostrarModalDescargaRawBT(producto);
             }
-        }
+        }, 500);
+        
+    } catch (error) {
+        console.error("❌ [RAWBT] Error:", error);
+        mostrarToast("Error al enviar a RawBT", "error");
+    }
+}
+function buscarProductoInventario(query) {
+    const resultsDiv = $('inventory-results');
+    const q = (query || '').toLowerCase().trim();
+    const qSinEspacios = q.replace(/\s+/g, '');
+    
+    if (q.length < 2) { 
+        resultsDiv.innerHTML = '<div class="empty-state"><i class="fas fa-search"></i><p>Escribe al menos 2 letras o dígitos</p></div>'; 
+        return; 
+    }
+    
+    const filtered = products.filter(p => {
+        const nombreProducto = (p.name || "").toLowerCase();
+        const codigoProducto = String(p.code || "").toLowerCase().replace(/\s+/g, '');
+        return nombreProducto.includes(q) ||
+               codigoProducto.includes(qSinEspacios) ||
+               codigoProducto === qSinEspacios;
+    });
+    
+    if (filtered.length === 0) { 
+        resultsDiv.innerHTML = '<div class="empty-state"><i class="fas fa-box-open"></i><p>No se encontraron productos</p></div>'; 
+        return; 
+    }
+    
+    let html = '';
+    filtered.slice(0, 20).forEach(p => {
+        const stock = Number(p.stock) || 0;
+        const ppb = Number(p.piecesPerBox) || 0;
+        const stockClass = stock === 0 ? 'out' : (stock < 5 ? 'low' : '');
+        let unidades = '<span style="color:#64748b; font-size:12px;">Piezas</span>';
+        if (p.type === 'cajetilla') unidades = '<span style="color:#64748b; font-size:12px;">Cajetillas / Cigarros</span>';
+        else if (p.type === 'cajapieza') unidades = '<span style="color:#64748b; font-size:12px;">Cajas / Piezas</span>';
+        else if (p.category === 'Cerveza') unidades = '<span style="color:#64748b; font-size:12px;">Piezas / Six / Caja</span>';
+        
+        html += '<div class="card" style="padding:16px; margin-bottom:10px;">' +
+            '<div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px;">' +
+            '<div style="flex:1; min-width:0;">' +
+            '<p style="font-weight:800; color:#0f172a; text-transform:uppercase; font-size:14px; margin:0 0 4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">' + escapeHtml(p.name) + '</p>' +
+            '<p style="font-size:11px; color:#94a3b8; margin:0;">' + (p.category || 'N/A') + ' · ' + (p.code || 'S/C') + '</p>' +
+            '</div>' +
+            '<div style="text-align:right; margin-left:12px;">' +
+            '<span class="qty ' + stockClass + '" style="font-size:24px; font-weight:900; color:' + (stock === 0 ? 'var(--tienda-color)' : (stock < 5 ? '#f59e0b' : '#0f172a')) + ';">' + stock + '</span>' +
+            '<p style="font-size:10px; color:#94a3b8; margin:0;">' + unidades + '</p>' +
+            '</div></div>' +
+            '<div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(70px, 1fr)); gap:6px;">' +
+            '<button onclick="ajustarStockMovil(\'' + p.id + '\', 1)" style="background:#dcfce7; color:#166534; padding:10px; border-radius:10px; border:none; font-weight:800; font-size:12px; cursor:pointer;"><i class="fas fa-plus"></i> +1 Pza</button>' +
+            '<button onclick="ajustarStockMovil(\'' + p.id + '\', -1)" style="background:#fee2e2; color:#991b1b; padding:10px; border-radius:10px; border:none; font-weight:800; font-size:12px; cursor:pointer;"><i class="fas fa-minus"></i> -1 Pza</button>' +
+            '<button onclick="ajustarStockMovil(\'' + p.id + '\', ' + ppb + ')" style="background:#dbeafe; color:#1e40af; padding:10px; border-radius:10px; border:none; font-weight:800; font-size:12px; cursor:pointer;"><i class="fas fa-box"></i> +1 Caja</button>' +
+            '<button onclick="ajustarStockMovil(\'' + p.id + '\', -' + ppb + ')" style="background:#fef3c7; color:#92400e; padding:10px; border-radius:10px; border:none; font-weight:800; font-size:12px; cursor:pointer;"><i class="fas fa-box-open"></i> -1 Caja</button>' +
+            '</div>' +
+            '<div style="display:grid; grid-template-columns: 1fr 1fr; gap:6px; margin-top:8px;">' +
+            '<button onclick="ajustarStockManual(\'' + p.id + '\')" style="background:#f1f5f9; color:#475569; padding:10px; border-radius:10px; border:none; font-weight:800; font-size:12px; cursor:pointer;"><i class="fas fa-edit"></i> Ajuste manual</button>' +
+            '<button onclick="imprimirEtiquetaDesdeInventario(\'' + p.id + '\')" style="background:#3b82f6; color:white; padding:10px; border-radius:10px; border:none; font-weight:800; font-size:12px; cursor:pointer;"><i class="fas fa-print"></i> Imprimir</button>' +
+            '</div>' +
+            '</div>';
+    });
+    resultsDiv.innerHTML = html;
+}
 
+// ⭐ Función auxiliar para imprimir desde inventario
+function imprimirEtiquetaDesdeInventario(productId) {
+    const producto = products.find(p => String(p.id) === String(productId));
+    if (!producto) {
+        mostrarToast('Producto no encontrado', 'error');
+        return;
+    }
+    imprimirEtiquetaLocal(producto);
+}
         function mostrarModalDescargaRawBT(producto) {
             Swal.fire({
                 icon: 'question',
@@ -1047,7 +1314,15 @@
             if (msgText && mensaje) msgText.innerText = mensaje;
             overlay.classList.remove("hidden-view");
         }
-
+function escapeHtml(texto) {
+    if (texto === null || texto === undefined) return '';
+    return String(texto)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
         function ocultarPantallaPago() {
             const overlay = $("payment-screen");
             if (overlay) overlay.classList.add("hidden-view");
@@ -1176,9 +1451,11 @@
                     .then(() => iniciarApp(data.tiendaId, data.tiendaNombre));
             } catch (e) { Swal.fire('Error', e.message, 'error'); }
         }
-
-        function iniciarApp(tiendaId, tiendaNombre) {
-            TIENDA_ACTUAL = { id: tiendaId, nombre: tiendaNombre };
+function iniciarApp(tiendaId, tiendaNombre) {
+    // ⭐ Resetear alerta de caducidad al iniciar
+    resetearAlertaCaducidad();
+    
+    TIENDA_ACTUAL = { id: tiendaId, nombre: tiendaNombre };
             const colorGuardado = localStorage.getItem('tiendaColor');
             if (colorGuardado) aplicarColorTienda(colorGuardado);
             $('link-screen').classList.add('hidden-view');
@@ -1217,10 +1494,15 @@
             aplicarColorTienda(data.tiendaInfo.color);
         }
     }
-    if (!$('view-stock').classList.contains('hidden-view')) renderStockView();
+   if (!$('view-stock').classList.contains('hidden-view')) renderStockView();
+
+// ⭐ Verificar alertas cada vez que se actualizan los productos
+setTimeout(() => checkExpiryAlerts(), 500);
 });
-            onCategoryChangeMobile();
-            toggleConfigMobile();
+          verificarLicencia();
+onCategoryChangeMobile();
+toggleConfigMobile();
+
         }
 
         window.addEventListener('DOMContentLoaded', () => {
@@ -1229,48 +1511,54 @@
             if (tiendaGuardada) iniciarApp(tiendaGuardada, nombreGuardado || 'Mi Tienda');
             else { $('link-screen').classList.remove('hidden-view'); $('app-main').classList.add('hidden-view'); }
         });
+function abrirFuncion(funcion) {
+    $('main-menu').classList.add('hidden-view');
+    $('header-back').classList.remove('hidden-view');
+    ['scan','price','add','stock','inventory'].forEach(v => $('view-' + v).classList.add('hidden-view'));
 
-        function abrirFuncion(funcion) {
-            $('main-menu').classList.add('hidden-view');
-            $('header-back').classList.remove('hidden-view');
-            ['scan','price','add','stock','inventory'].forEach(v => $('view-' + v).classList.add('hidden-view'));
-
-            if (funcion === 'scan') {
-                $('view-scan').classList.remove('hidden-view');
-                $('header-title').innerText = 'Escanear Producto';
-                $('scan-result').innerHTML = '';
-                setTimeout(() => iniciarEscaneoContinuo('scan'), 400);
-            } else if (funcion === 'price') {
-                $('view-price').classList.remove('hidden-view');
-                $('header-title').innerText = 'Cambiar Precio';
-                $('price-result').innerHTML = '';
-            } else if (funcion === 'add') {
-                $('view-add').classList.remove('hidden-view');
-                $('header-title').innerText = 'Nuevo Producto';
-            } else if (funcion === 'stock') {
-                $('view-stock').classList.remove('hidden-view');
-                $('header-title').innerText = 'Stock';
-                stockFilterActual = 'all';
-                if ($('stock-search')) $('stock-search').value = '';
-                setStockFilter('all');
-            } else if (funcion === 'inventory') {
-                $('view-inventory').classList.remove('hidden-view');
-                $('header-title').innerText = 'Modificar Stock';
-                $('inventory-search').value = '';
-                $('inventory-results').innerHTML = '<div class="empty-state"><i class="fas fa-search"></i><p>Escribe el nombre o código de un producto</p></div>';
-                setTimeout(() => $('inventory-search').focus(), 300);
-            }
-        }
-
-        function volverAlMenu() {
-            $('main-menu').classList.remove('hidden-view');
-            $('header-back').classList.add('hidden-view');
-            ['scan','price','add','stock','inventory'].forEach(v => $('view-' + v).classList.add('hidden-view'));
-            $('header-title').innerText = TIENDA_ACTUAL?.nombre || 'Mi Tienda';
-            cerrarEscanerProducto();
-            cerrarEscanerInventario();
-            cerrarEscanerStock();
-        }
+    if (funcion === 'scan') {
+        $('view-scan').classList.remove('hidden-view');
+        $('header-title').innerText = 'Escanear Producto';
+        $('scan-result').innerHTML = '';
+        $('scan-search').value = '';
+        $('scan-search-results').innerHTML = '';
+    } else if (funcion === 'price') {
+        $('view-price').classList.remove('hidden-view');
+        $('header-title').innerText = 'Cambiar Precio';
+        $('price-result').innerHTML = '';
+        $('price-search').value = '';
+        $('price-search-results').innerHTML = '';
+    } else if (funcion === 'add') {
+        $('view-add').classList.remove('hidden-view');
+        $('header-title').innerText = 'Nuevo Producto';
+        $('add-search').value = '';
+        $('add-search-results').innerHTML = '';
+    } else if (funcion === 'stock') {
+        $('view-stock').classList.remove('hidden-view');
+        $('header-title').innerText = 'Stock';
+        stockFilterActual = 'all';
+        if ($('stock-search')) $('stock-search').value = '';
+        setStockFilter('all');
+    } else if (funcion === 'inventory') {
+        $('view-inventory').classList.remove('hidden-view');
+        $('header-title').innerText = 'Modificar Stock';
+        $('inventory-search').value = '';
+        $('inventory-results').innerHTML = '<div class="empty-state"><i class="fas fa-search"></i><p>Escribe el nombre o código de un producto</p></div>';
+        setTimeout(() => $('inventory-search').focus(), 300);
+    }
+}
+function volverAlMenu() {
+    $('main-menu').classList.remove('hidden-view');
+    $('header-back').classList.add('hidden-view');
+    ['scan','price','add','stock','inventory'].forEach(v => $('view-' + v).classList.add('hidden-view'));
+    $('header-title').innerText = TIENDA_ACTUAL?.nombre || 'Mi Tienda';
+    cerrarEscanerProducto();
+    cerrarEscanerInventario();
+    cerrarEscanerStock();
+    
+    // ⭐ Verificar alertas de caducidad
+    setTimeout(() => checkExpiryAlerts(), 300);
+}
 
         function iniciarEscaneoContinuo(context) {
             scannerContext = context || 'scan';
@@ -1315,36 +1603,76 @@
         }
 
         function vibrarError() { if (navigator.vibrate) navigator.vibrate([100, 50, 100]); }
-
-        function procesarEscaneo(code) {
-            const product = products.find(p => p.code === code);
-            if (scannerContext === 'scan') {
-                cerrarEscanerProducto();
-                setTimeout(() => {
-                    if (product) mostrarInfoProducto(product, 'scan-result');
-                    else $('scan-result').innerHTML = '<div class="card" style="border-color:#fecaca; background:#fef2f2;"><div style="text-align:center;"><i class="fas fa-times-circle" style="font-size:44px; color:var(--tienda-color); margin-bottom:14px;"></i><p style="font-weight:800; color:var(--tienda-color);">Producto no encontrado</p><p style="font-family:monospace; font-weight:900; color:#0f172a;">' + code + '</p></div></div><button class="action-btn blue" onclick="iniciarEscaneoContinuo(\'scan\')" style="margin-top:14px;"><i class="fas fa-camera"></i> Escanear otro</button>';
-                }, 300);
-                return;
-            }
-            if (scannerContext === 'price') {
-                cerrarEscanerProducto();
-                setTimeout(() => {
-                    if (product) mostrarFormularioCambioPrecio(product);
-                    else { mostrarToast('Producto no encontrado: ' + code, 'error'); vibrarError(); }
-                }, 300);
-                return;
-            }
-            if (scannerContext === 'add') {
-                cerrarEscanerProducto();
-                setTimeout(() => {
-                    $('p-code-mob').value = code;
-                    $('add-form-container').classList.remove('hidden-view');
-                    autocompletarDesdePrecioCheck(code);
-                }, 300);
-                return;
-            }
+function procesarEscaneo(code) {
+    const cleanCode = String(code).replace(/[^0-9]/g, '');
+    const product = products.find(p => {
+        if (!p.code && p.code !== 0) return false;
+        const pCode = String(p.code).replace(/[^0-9]/g, '');
+        if (pCode === cleanCode) return true;
+        if (pCode.length >= 6 && cleanCode.includes(pCode)) return true;
+        if (cleanCode.length >= 6 && pCode.includes(cleanCode)) return true;
+        const minLen = Math.min(pCode.length, cleanCode.length);
+        for (let len = Math.min(minLen, 9); len >= 4; len--) {
+            if (pCode.slice(-len) === cleanCode.slice(-len)) return true;
         }
+        return false;
+    });
 
+    // ⭐ PROCESAR SEGÚN EL CONTEXTO
+    if (scannerContext === 'scan') {
+        cerrarEscanerProducto();
+        setTimeout(() => {
+            if (product) {
+                mostrarInfoProducto(product, 'scan-result');
+            } else {
+                $('scan-result').innerHTML = '<div class="card" style="border-color:#fecaca; background:#fef2f2;">' +
+                    '<div style="text-align:center;">' +
+                    '<i class="fas fa-times-circle" style="font-size:44px; color:var(--tienda-color); margin-bottom:14px;"></i>' +
+                    '<p style="font-weight:800; color:var(--tienda-color);">Producto no encontrado</p>' +
+                    '<p style="font-family:monospace; font-weight:900; color:#0f172a;">' + code + '</p>' +
+                    '</div></div>' +
+                    '<button class="action-btn blue" onclick="iniciarEscaneoContinuo(\'scan\')" style="margin-top:14px;">' +
+                    '<i class="fas fa-camera"></i> Escanear otro' +
+                    '</button>';
+            }
+        }, 300);
+        return;
+    }
+
+    if (scannerContext === 'price') {
+        cerrarEscanerProducto();
+        setTimeout(() => {
+            if (product) {
+                mostrarFormularioCambioPrecio(product);
+            } else {
+                mostrarToast('Producto no encontrado: ' + code, 'error');
+                vibrarError();
+            }
+        }, 300);
+        return;
+    }
+
+    if (scannerContext === 'add') {
+        cerrarEscanerProducto();
+        setTimeout(() => {
+            // Si el producto ya existe, avisar
+            if (product) {
+                $('add-search-results').innerHTML = '<div class="card" style="background:#fef3c7; border-color:#fcd34d; padding:14px;">' +
+                    '<p style="font-weight:800; color:#92400e; margin:0 0 10px 0; font-size:13px;">' +
+                    '<i class="fas fa-exclamation-triangle"></i> Este código ya existe:</p>' +
+                    '<div style="background:white; border-radius:10px; padding:10px; font-size:12px;">' +
+                    '<div style="font-weight:800; color:#0f172a;">' + escapeHtml(product.name) + '</div>' +
+                    '<div style="color:#64748b; font-size:11px;">' + (product.code || 'S/C') + ' · $' + Number(product.price || 0).toFixed(2) + '</div>' +
+                    '</div></div>';
+                return;
+            }
+            $('p-code-mob').value = code;
+            $('add-form-container').classList.remove('hidden-view');
+            autocompletarDesdePrecioCheck(code);
+        }, 300);
+        return;
+    }
+}
         function mostrarInfoProducto(product, containerId) {
             const stock = Number(product.stock) || 0;
             const stockClass = stock === 0 ? 'stock-out' : (stock < 5 ? 'stock-low' : 'stock-ok');
@@ -1511,31 +1839,195 @@
                     ['p-name-mob','p-code-mob','p-cost-mob','p-margin-mob','p-price-main-mob','p-stock-mob','p-price-box-mob','p-piece-price-mob','p-stock-boxes-cigar-mob','p-stock-loose-cigar-mob','p-price-six-mob','p-price-24-mob','p-stock-boxes-mob','p-stock-loose-mob','p-expiry-mob'].forEach(id => { const el = $(id); if (el) el.value = ''; });
                     $('p-pieces-per-box-cigar-mob').value = 20;
                     $('p-pieces-per-box-mob').value = 24;
-                    $('add-form-container').classList.add('hidden-view');
+                   $('add-form-container').classList.add('hidden-view');
+               
                 }).catch(err => Swal.fire({ icon: 'error', title: 'Error al guardar', text: err.message, confirmButtonColor: '#dc2626' }));
             });
         }
+// ═══════════════════════════════════════════════════════════
+// BUSCADOR EN VISTA "ESCANEAR"
+// ═══════════════════════════════════════════════════════════
+function buscarProductoScan(query) {
+    const resultsDiv = $('scan-search-results');
+    const q = (query || '').toLowerCase().trim();
+    const qSinEspacios = q.replace(/\s+/g, '');
+    
+    // Ocultar resultado de escaneo previo
+    $('scan-result').innerHTML = '';
+    
+    if (q.length < 2) {
+        resultsDiv.innerHTML = '';
+        return;
+    }
+    const qSinEspacios1 = q.replace(/\s+/g, '');
+const filtered = products.filter(p => {
+    const nombreProducto = (p.name || "").toLowerCase();
+    const codigoProducto = String(p.code || "").toLowerCase().replace(/\s+/g, '');
+    return nombreProducto.includes(q) ||
+           codigoProducto.includes(qSinEspacios) ||
+           codigoProducto === qSinEspacios;
+});
+    
+    if (filtered.length === 0) {
+        resultsDiv.innerHTML = '<div class="empty-state"><i class="fas fa-box-open"></i><p>No se encontraron productos</p></div>';
+        return;
+    }
+    
+    let html = '<div class="section-title"><i class="fas fa-list"></i> Resultados (' + filtered.length + ')</div>';
+    filtered.slice(0, 20).forEach(p => {
+        const stock = Number(p.stock) || 0;
+        const stockColor = stock === 0 ? 'var(--tienda-color)' : (stock < 5 ? '#f59e0b' : '#10b981');
+        html += '<div class="stock-item" onclick="mostrarInfoProductoPorId(\'' + p.id + '\')" style="border-left-color:' + stockColor + ';">' +
+            '<div class="info">' +
+            '<div class="name">' + escapeHtml(p.name) + '</div>' +
+            '<div class="meta">' + (p.category || 'N/A') + ' · ' + (p.code || 'S/C') + '</div>' +
+            '</div>' +
+            '<div class="qty" style="color:' + stockColor + ';">' + stock + '</div>' +
+            '</div>';
+    });
+    resultsDiv.innerHTML = html;
+}
 
-        function buscarProductoInventario(query) {
-            const resultsDiv = $('inventory-results');
-            const q = (query || '').toLowerCase().trim();
-            if (q.length < 2) { resultsDiv.innerHTML = '<div class="empty-state"><i class="fas fa-search"></i><p>Escribe al menos 2 letras</p></div>'; return; }
-            const filtered = products.filter(p => p.name.toLowerCase().includes(q) || (p.code && p.code.toLowerCase().includes(q)));
-            if (filtered.length === 0) { resultsDiv.innerHTML = '<div class="empty-state"><i class="fas fa-box-open"></i><p>No se encontraron productos</p></div>'; return; }
-            let html = '';
-            filtered.slice(0, 20).forEach(p => {
-                const stock = Number(p.stock) || 0;
-                const ppb = Number(p.piecesPerBox) || 0;
-                const stockClass = stock === 0 ? 'out' : (stock < 5 ? 'low' : '');
-                let unidades = '<span style="color:#64748b; font-size:12px;">Piezas</span>';
-                if (p.type === 'cajetilla') unidades = '<span style="color:#64748b; font-size:12px;">Cajetillas / Cigarros</span>';
-                else if (p.type === 'cajapieza') unidades = '<span style="color:#64748b; font-size:12px;">Cajas / Piezas</span>';
-                else if (p.category === 'Cerveza') unidades = '<span style="color:#64748b; font-size:12px;">Piezas / Six / Caja</span>';
-                html += '<div class="card" style="padding:16px; margin-bottom:10px;"><div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px;"><div style="flex:1; min-width:0;"><p style="font-weight:800; color:#0f172a; text-transform:uppercase; font-size:14px; margin:0 0 4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">' + p.name + '</p><p style="font-size:11px; color:#94a3b8; margin:0;">' + (p.category || 'N/A') + ' · ' + (p.code || 'S/C') + '</p></div><div style="text-align:right; margin-left:12px;"><span class="qty ' + stockClass + '" style="font-size:24px; font-weight:900; color:' + (stock === 0 ? 'var(--tienda-color)' : (stock < 5 ? '#f59e0b' : '#0f172a')) + ';">' + stock + '</span><p style="font-size:10px; color:#94a3b8; margin:0;">' + unidades + '</p></div></div><div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(70px, 1fr)); gap:6px;"><button onclick="ajustarStockMovil(\'' + p.id + '\', 1)" style="background:#dcfce7; color:#166534; padding:10px; border-radius:10px; border:none; font-weight:800; font-size:12px; cursor:pointer;"><i class="fas fa-plus"></i> +1 Pza</button><button onclick="ajustarStockMovil(\'' + p.id + '\', -1)" style="background:#fee2e2; color:#991b1b; padding:10px; border-radius:10px; border:none; font-weight:800; font-size:12px; cursor:pointer;"><i class="fas fa-minus"></i> -1 Pza</button><button onclick="ajustarStockMovil(\'' + p.id + '\', ' + ppb + ')" style="background:#dbeafe; color:#1e40af; padding:10px; border-radius:10px; border:none; font-weight:800; font-size:12px; cursor:pointer;"><i class="fas fa-box"></i> +1 Caja</button><button onclick="ajustarStockMovil(\'' + p.id + '\', -' + ppb + ')" style="background:#fef3c7; color:#92400e; padding:10px; border-radius:10px; border:none; font-weight:800; font-size:12px; cursor:pointer;"><i class="fas fa-box-open"></i> -1 Caja</button></div><button onclick="ajustarStockManual(\'' + p.id + '\')" style="width:100%; margin-top:8px; background:#f1f5f9; color:#475569; padding:10px; border-radius:10px; border:none; font-weight:800; font-size:12px; cursor:pointer;"><i class="fas fa-edit"></i> Ajuste manual</button></div>';
-            });
-            resultsDiv.innerHTML = html;
+function mostrarInfoProductoPorId(productId) {
+    const product = products.find(p => String(p.id) === String(productId));
+    if (!product) return;
+    // Ocultar resultados y mostrar info
+    $('scan-search-results').innerHTML = '';
+    $('scan-search').value = '';
+    mostrarInfoProducto(product, 'scan-result');
+}
+
+// ═══════════════════════════════════════════════════════════
+// BUSCADOR EN VISTA "CAMBIAR PRECIO"
+// ═══════════════════════════════════════════════════════════
+function buscarProductoPrice(query) {
+    const resultsDiv = $('price-search-results');
+    const q = (query || '').toLowerCase().trim();
+    const qSinEspacios = q.replace(/\s+/g, '');
+    
+    $('price-result').innerHTML = '';
+    
+    if (q.length < 2) {
+        resultsDiv.innerHTML = '';
+        return;
+    }
+    
+    const filtered = products.filter(p => {
+        const nombreProducto = (p.name || "").toLowerCase();
+        const codigoProducto = String(p.code || "").toLowerCase().replace(/\s+/g, '');
+        return nombreProducto.includes(q) ||
+               codigoProducto.includes(qSinEspacios) ||
+               codigoProducto === qSinEspacios;
+    });
+    
+    if (filtered.length === 0) {
+        resultsDiv.innerHTML = '<div class="empty-state"><i class="fas fa-box-open"></i><p>No se encontraron productos</p></div>';
+        return;
+    }
+    
+    let html = '<div class="section-title"><i class="fas fa-list"></i> Resultados (' + filtered.length + ')</div>';
+    filtered.slice(0, 20).forEach(p => {
+        html += '<div class="stock-item" onclick="mostrarFormularioCambioPrecioPorId(\'' + p.id + '\')">' +
+            '<div class="info">' +
+            '<div class="name">' + escapeHtml(p.name) + '</div>' +
+            '<div class="meta">' + (p.category || 'N/A') + ' · $' + Number(p.price || 0).toFixed(2) + '</div>' +
+            '</div>' +
+            '<i class="fas fa-chevron-right" style="color:#94a3b8;"></i>' +
+            '</div>';
+    });
+    resultsDiv.innerHTML = html;
+}
+
+function mostrarFormularioCambioPrecioPorId(productId) {
+    const product = products.find(p => String(p.id) === String(productId));
+    if (!product) return;
+    $('price-search-results').innerHTML = '';
+    $('price-search').value = '';
+    mostrarFormularioCambioPrecio(product);
+}
+// ═══════════════════════════════════════════════════════════
+// BUSCADOR EN VISTA "AGREGAR PRODUCTO"
+// ═══════════════════════════════════════════════════════════
+function buscarProductoAdd(query) {
+    const resultsDiv = $('add-search-results');
+    const q = (query || '').toLowerCase().trim();
+    const qSinEspacios = q.replace(/\s+/g, '');
+    
+    if (q.length < 2) {
+        resultsDiv.innerHTML = '';
+        return;
+    }
+    
+    const filtered = products.filter(p => {
+        const nombreProducto = (p.name || "").toLowerCase();
+        const codigoProducto = String(p.code || "").toLowerCase().replace(/\s+/g, '');
+        return nombreProducto.includes(q) ||
+               codigoProducto.includes(qSinEspacios) ||
+               codigoProducto === qSinEspacios;
+    });
+    
+    // ⭐ SI NO EXISTE → Mostrar botón para agregarlo como nuevo
+    if (filtered.length === 0) {
+        resultsDiv.innerHTML = 
+            '<div class="card" style="background:#dcfce7; border-color:#86efac; text-align:center; padding:20px;">' +
+            '<i class="fas fa-plus-circle" style="font-size:42px; color:#166534; margin-bottom:12px;"></i>' +
+            '<p style="font-weight:900; color:#166534; margin:0 0 6px 0; font-size:15px;">No existe producto</p>' +
+            '<p style="font-size:13px; color:#166534; margin:0 0 16px 0;">con "' + escapeHtml(q) + '"</p>' +
+            '<button onclick="prepararNuevoProducto(\'' + q.replace(/'/g, "\\'") + '\')" ' +
+            'style="width:100%; background:linear-gradient(135deg, #10b981, #059669); color:white; padding:14px; border-radius:14px; border:none; font-weight:900; font-size:14px; cursor:pointer; text-transform:uppercase; letter-spacing:1px; box-shadow:0 6px 16px rgba(16,185,129,0.3);">' +
+            '<i class="fas fa-plus-circle"></i> Agregar Nuevo Producto' +
+            '</button>' +
+            '</div>';
+        return;
+    }
+    
+    // ⭐ SI YA EXISTE → Mostrar advertencia y opción de ver/editar
+    let html = '<div class="card" style="background:#fef3c7; border-color:#fcd34d; padding:14px;">' +
+        '<p style="font-weight:800; color:#92400e; margin:0 0 10px 0; font-size:13px;">' +
+        '<i class="fas fa-exclamation-triangle"></i> Ya existe(n) ' + filtered.length + ' producto(s):</p>';
+    
+    filtered.slice(0, 5).forEach(p => {
+        html += '<div style="background:white; border-radius:10px; padding:10px; margin-bottom:6px; font-size:12px;">' +
+            '<div style="font-weight:800; color:#0f172a;">' + escapeHtml(p.name) + '</div>' +
+            '<div style="color:#64748b; font-size:11px;">' + (p.code || 'S/C') + ' · $' + Number(p.price || 0).toFixed(2) + '</div>' +
+            '</div>';
+    });
+    
+    html += '<p style="font-size:11px; color:#92400e; margin:10px 0 0 0; text-align:center;">' +
+        'Puedes agregarlo de todas formas con un nombre diferente</p>' +
+        '<button onclick="prepararNuevoProducto(\'' + q.replace(/'/g, "\\'") + '\')" ' +
+        'style="width:100%; margin-top:10px; background:linear-gradient(135deg, #f59e0b, #d97706); color:white; padding:12px; border-radius:12px; border:none; font-weight:900; font-size:13px; cursor:pointer; text-transform:uppercase; letter-spacing:0.8px;">' +
+        '<i class="fas fa-plus-circle"></i> Agregar de todas formas' +
+        '</button>';
+    
+    html += '</div>';
+    resultsDiv.innerHTML = html;
+}
+
+// ⭐ NUEVA FUNCIÓN: Preparar el formulario con el nombre buscado
+function prepararNuevoProducto(nombreBuscado) {
+    // Limpiar búsqueda
+    $('add-search').value = '';
+    $('add-search-results').innerHTML = '';
+    
+    // Mostrar el formulario
+    $('add-form-container').classList.remove('hidden-view');
+    
+    // ⭐ Pre-llenar el nombre con lo que el usuario buscó
+    const inputNombre = $('p-name-mob');
+    if (inputNombre) {
+        inputNombre.value = nombreBuscado.toUpperCase();
+    }
+    
+    // Enfocar el campo de código de barras
+    setTimeout(() => {
+        const inputCodigo = $('p-code-mob');
+        if (inputCodigo) {
+            inputCodigo.focus();
+            mostrarToast('📝 Completa los datos del producto', 'info');
         }
-
+    }, 300);
+}
         function ajustarStockMovil(productId, cantidad) {
             const cantidadNum = Number(cantidad);
             if (isNaN(cantidadNum) || cantidadNum === 0) return;
@@ -1593,10 +2085,18 @@
                     (decodedText) => {
                         cerrarEscanerInventario(); vibrarYBeep();
                         const code = decodedText.trim();
-                        const product = products.find(p => p.code === code);
-                        if (product) { $('inventory-search').value = product.name; buscarProductoInventario(product.name); }
-                        else { mostrarToast('Producto no encontrado: ' + code, 'error'); vibrarError(); }
-                    }, () => {}
+const cleanCode = code.replace(/[^0-9]/g, '');
+const product = products.find(p => {
+    if (!p.code) return false;
+    const pCode = String(p.code).replace(/[^0-9]/g, '');
+    if (pCode === cleanCode) return true;
+    const minLen = Math.min(pCode.length, cleanCode.length);
+    for (let len = Math.min(minLen, 9); len >= 4; len--) {
+        if (pCode.slice(-len) === cleanCode.slice(-len)) return true;
+    }
+    return false;
+});
+if (product) { $('inventory-search').value = product.name; buscarProductoInventario(product.name); }  }, () => {}
                 ).catch(err => { Swal.fire('Error', 'No se pudo abrir la cámara: ' + err.message, 'error'); cerrarEscanerInventario(); });
             }, 300);
         }
@@ -1615,9 +2115,19 @@
                     (decodedText) => {
                         cerrarEscanerStock(); vibrarYBeep();
                         const code = decodedText.trim();
-                        const product = products.find(p => p.code === code);
-                        if (product) {
-                            $('stock-search').value = product.name;
+const cleanCode = code.replace(/[^0-9]/g, '');
+const product = products.find(p => {
+    if (!p.code) return false;
+    const pCode = String(p.code).replace(/[^0-9]/g, '');
+    if (pCode === cleanCode) return true;
+    const minLen = Math.min(pCode.length, cleanCode.length);
+    for (let len = Math.min(minLen, 9); len >= 4; len--) {
+        if (pCode.slice(-len) === cleanCode.slice(-len)) return true;
+    }
+    return false;
+});
+if (product) {
+    $('stock-search').value = product.name;
                             stockFilterActual = 'all';
                             document.querySelectorAll('.stock-filter-btn').forEach(btn => {
                                 if (btn.dataset.filter === 'all') { btn.style.background = 'var(--tienda-color)'; btn.style.color = 'white'; }
@@ -1675,7 +2185,16 @@
             }
 
             let filteredProducts = [...products];
-            if (searchQuery) filteredProducts = filteredProducts.filter(p => p.name.toLowerCase().includes(searchQuery) || (p.code && p.code.toLowerCase().includes(searchQuery)));
+           if (searchQuery) {
+    const searchQuerySinEspacios = searchQuery.replace(/\s+/g, '');
+    filteredProducts = filteredProducts.filter(p => {
+        const nombreProducto = (p.name || "").toLowerCase();
+        const codigoProducto = String(p.code || "").toLowerCase().replace(/\s+/g, '');
+        return nombreProducto.includes(searchQuery) ||
+               codigoProducto.includes(searchQuerySinEspacios) ||
+               codigoProducto === searchQuerySinEspacios;
+    });
+}
             if (stockFilterActual === 'low') filteredProducts = filteredProducts.filter(p => Number(p.stock) > 0 && Number(p.stock) < 5);
             else if (stockFilterActual === 'out') filteredProducts = filteredProducts.filter(p => Number(p.stock) <= 0);
             else if (stockFilterActual !== 'all') filteredProducts = filteredProducts.filter(p => p.category === stockFilterActual);
