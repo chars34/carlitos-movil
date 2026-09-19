@@ -8,7 +8,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script src="https://unpkg.com/html5-qrcode"></script>
+   <script src="js/html5-qrcode.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
     <style>
@@ -860,7 +860,10 @@
         <span class="dot"></span>
         <span id="device-id">Dispositivo</span>
     </div>
-
+<!-- ⭐ INDICADOR DE COLA DE SINCRONIZACIÓN -->
+<div id="sync-queue-badge" class="hidden-view" style="position:fixed; bottom:50px; right:12px; background:#f59e0b; color:white; padding:8px 14px; border-radius:100px; font-weight:900; font-size:12px; box-shadow:0 4px 12px rgba(0,0,0,0.2); z-index:200; display:flex; align-items:center; gap:6px; cursor:pointer;" onclick="mostrarDetalleCola()">
+    <i class="fas fa-cloud-upload-alt"></i> 0
+</div>
     <script>
         const WHATSAPP_SOPORTE = {
             numero: "5212371062600",
@@ -891,7 +894,279 @@
         let scanCooldown = false;
         let licenciaActiva = true;
         let stockFilterActual = 'all';
+// ═══════════════════════════════════════════════════════════
+// 📴 SISTEMA DE MODO OFFLINE CON COLA DE SINCRONIZACIÓN
+// ═══════════════════════════════════════════════════════════
 
+// Cola de operaciones pendientes
+let syncQueue = JSON.parse(localStorage.getItem('syncQueue_pos') || '[]');
+let procesandoCola = false;
+
+// ⭐ Guardar una operación en la cola
+function guardarEnCola(tipo, data) {
+    const operacion = {
+        id: 'op_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
+        tipo: tipo,
+        data: data,
+        timestamp: Date.now(),
+        intentos: 0
+    };
+    
+    syncQueue.push(operacion);
+    localStorage.setItem('syncQueue_pos', JSON.stringify(syncQueue));
+    
+    console.log('📥 Operación en cola:', tipo, '| Total en cola:', syncQueue.length);
+    
+    // Actualizar el indicador visual
+    actualizarIndicadorCola();
+    
+    return operacion.id;
+}
+
+// ⭐ Procesar la cola de operaciones
+async function procesarCola() {
+    if (procesandoCola) {
+        console.log('⏳ Ya se está procesando la cola...');
+        return;
+    }
+    
+    if (!navigator.onLine) {
+        console.log('📴 Sin conexión. Cola pendiente:', syncQueue.length);
+        return;
+    }
+    
+    if (syncQueue.length === 0) {
+        console.log('✅ Cola vacía');
+        return;
+    }
+    
+    procesandoCola = true;
+    console.log('🔄 Procesando cola:', syncQueue.length, 'operaciones...');
+    
+    let procesadas = 0;
+    let fallidas = 0;
+    
+    while (syncQueue.length > 0) {
+        const op = syncQueue[0];
+        
+        try {
+            await ejecutarOperacion(op);
+            // Éxito: quitar de la cola
+            syncQueue.shift();
+            localStorage.setItem('syncQueue_pos', JSON.stringify(syncQueue));
+            procesadas++;
+            console.log('✅ Procesada:', op.tipo, '| Quedan:', syncQueue.length);
+        } catch (e) {
+            console.error('❌ Error procesando operación:', op.tipo, e.message);
+            op.intentos = (op.intentos || 0) + 1;
+            
+            // Si falla más de 5 veces, descartar
+            if (op.intentos >= 5) {
+                console.warn('🗑️ Operación descartada tras 5 intentos:', op.tipo);
+                syncQueue.shift();
+                localStorage.setItem('syncQueue_pos', JSON.stringify(syncQueue));
+            } else {
+                // Guardar intentos actualizados
+                localStorage.setItem('syncQueue_pos', JSON.stringify(syncQueue));
+            }
+            
+            fallidas++;
+            break; // Detener para no sobrecargar
+        }
+    }
+    
+    procesandoCola = false;
+    actualizarIndicadorCola();
+    
+    console.log('📊 Cola procesada. Éxitos:', procesadas, '| Fallos:', fallidas, '| Pendientes:', syncQueue.length);
+    
+    // Avisar al usuario si se sincronizó algo
+    if (procesadas > 0 && syncQueue.length === 0) {
+        mostrarToast('✅ ' + procesadas + ' operación(es) sincronizada(s)', 'success');
+    } else if (procesadas > 0) {
+        mostrarToast('🔄 ' + procesadas + ' sincronizada(s), ' + syncQueue.length + ' pendiente(s)', 'info');
+    }
+}
+async function ejecutarOperacion(op) {
+    if (!dbRef) throw new Error('No hay conexión a Firebase');
+    
+    console.log('⚙️ Ejecutando:', op.tipo);
+    
+    switch (op.tipo) {
+        case 'agregar_producto':
+            await dbRef.child('products').push(op.data);
+            break;
+            
+        case 'modificar_stock':
+            const snap = await dbRef.child('products').once('value');
+            let arr = snap.val() || [];
+            if (!Array.isArray(arr)) arr = Object.values(arr);
+            
+            const idx = arr.findIndex(p => String(p.id) === String(op.data.productId));
+            if (idx !== -1) {
+                arr[idx].stock = op.data.nuevoStock;
+                await dbRef.child('products').set(arr);
+            }
+            break;
+            
+        case 'cambiar_precio':
+            const snap2 = await dbRef.child('products').once('value');
+            let arr2 = snap2.val() || [];
+            if (!Array.isArray(arr2)) arr2 = Object.values(arr2);
+            
+            const idx2 = arr2.findIndex(p => String(p.id) === String(op.data.productId));
+            if (idx2 !== -1) {
+                arr2[idx2].price = op.data.nuevoPrecio;
+                await dbRef.child('products').set(arr2);
+            }
+            break;
+            
+        case 'registrar_venta':
+            await dbRef.child('salesHistory').push(op.data);
+            // Actualizar totales del día
+            const snap3 = await dbRef.child('dailySales').once('value');
+            const totalActual = snap3.val() || 0;
+            await dbRef.child('dailySales').set(totalActual + op.data.total);
+            break;
+            
+        default:
+            console.warn('⚠️ Tipo de operación desconocida:', op.tipo);
+    }
+}
+function mostrarDetalleCola() {
+    if (syncQueue.length === 0) {
+        return Swal.fire({
+            icon: 'success',
+            title: '✅ Todo sincronizado',
+            text: 'No hay operaciones pendientes.',
+            confirmButtonColor: '#10b981'
+        });
+    }
+    
+    let html = '<div style="text-align:left; max-height:340px; overflow-y:auto;">';
+    
+    if (!navigator.onLine) {
+        html += '<div style="background:#fee2e2; border-left:4px solid #dc2626; padding:10px; border-radius:8px; margin-bottom:10px; font-size:12px; color:#991b1b;">' +
+            '<i class="fas fa-wifi-slash"></i> <b>Sin conexión</b> - Las operaciones se sincronizarán cuando vuelva el internet.' +
+            '</div>';
+    }
+    
+    syncQueue.forEach((op, i) => {
+        const fecha = new Date(op.timestamp).toLocaleString('es-MX', {
+            day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'
+        });
+        
+        let descripcion = '';
+        let icono = 'fa-circle';
+        let color = '#3b82f6';
+        
+        switch (op.tipo) {
+            case 'agregar_producto':
+                descripcion = '📦 Nuevo: ' + (op.data.name || 'Sin nombre');
+                icono = 'fa-plus-circle';
+                color = '#10b981';
+                break;
+            case 'modificar_stock':
+                descripcion = '📊 Stock: ' + (op.data.nombre || 'Producto');
+                icono = 'fa-box';
+                color = '#f59e0b';
+                break;
+            case 'cambiar_precio':
+                descripcion = '💵 Precio: ' + (op.data.nombre || 'Producto');
+                icono = 'fa-tag';
+                color = '#8b5cf6';
+                break;
+            case 'registrar_venta':
+                descripcion = '🛒 Venta: $' + (op.data.total || 0).toFixed(2);
+                icono = 'fa-shopping-cart';
+                color = '#06b6d4';
+                break;
+        }
+        
+        html += '<div style="background:#f8fafc; border-radius:10px; padding:12px; margin-bottom:8px; border-left:4px solid ' + color + ';">' +
+            '<div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">' +
+            '<div style="flex:1; min-width:0;">' +
+            '<div style="font-weight:800; color:#0f172a; font-size:13px;">' + descripcion + '</div>' +
+            '<div style="font-size:11px; color:#64748b; margin-top:4px;">' + fecha + '</div>' +
+            (op.intentos > 0 ? '<div style="font-size:10px; color:#f59e0b; margin-top:2px;">⚠️ ' + op.intentos + ' intento(s) fallido(s)</div>' : '') +
+            '</div>' +
+            '<button onclick="eliminarOperacionCola(\'' + op.id + '\')" style="background:#fee2e2; color:#991b1b; border:none; border-radius:8px; padding:6px 10px; font-size:11px; font-weight:800; cursor:pointer;">' +
+            '<i class="fas fa-trash"></i>' +
+            '</button>' +
+            '</div>' +
+            '</div>';
+    });
+    
+    html += '</div>';
+    
+    Swal.fire({
+        title: '📤 Cola de Sincronización',
+        html: html,
+        showCancelButton: true,
+        confirmButtonText: '🔄 Sincronizar ahora',
+        cancelButtonText: 'Cerrar',
+        confirmButtonColor: '#10b981',
+        cancelButtonColor: '#6b7280',
+        width: '450px'
+    }).then(result => {
+        if (result.isConfirmed) {
+            procesarCola();
+        }
+    });
+}
+
+// ⭐ Eliminar una operación específica de la cola
+function eliminarOperacionCola(opId) {
+    Swal.fire({
+        title: '¿Eliminar operación?',
+        text: 'Esta operación no se enviará a Firebase.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Sí, eliminar',
+        cancelButtonText: 'Cancelar',
+        confirmButtonColor: '#dc2626',
+        cancelButtonColor: '#6b7280'
+    }).then(result => {
+        if (result.isConfirmed) {
+            syncQueue = syncQueue.filter(op => op.id !== opId);
+            localStorage.setItem('syncQueue_pos', JSON.stringify(syncQueue));
+            actualizarIndicadorCola();
+            mostrarToast('✅ Operación eliminada', 'success');
+            mostrarDetalleCola(); // Recargar el modal
+        }
+    });
+}
+// ⭐ Actualizar indicador visual de la cola
+function actualizarIndicadorCola() {
+    const badge = document.getElementById('sync-queue-badge');
+    if (!badge) return;
+    
+    if (syncQueue.length > 0) {
+        badge.classList.remove('hidden-view');
+        badge.innerHTML = '<i class="fas fa-cloud-upload-alt"></i> ' + syncQueue.length;
+        
+        if (navigator.onLine) {
+            badge.style.background = '#f59e0b'; // Amarillo: pendiente de subir
+            badge.title = syncQueue.length + ' operación(es) pendiente(s) de sincronizar';
+        } else {
+            badge.style.background = '#ef4444'; // Rojo: sin conexión
+            badge.title = 'Sin conexión - ' + syncQueue.length + ' operación(es) en cola';
+        }
+    } else {
+        badge.classList.add('hidden-view');
+    }
+}
+
+// ⭐ Detectar conexión y procesar cola automáticamente
+window.addEventListener('online', () => {
+    console.log('🌐 Conexión recuperada. Procesando cola...');
+    setTimeout(procesarCola, 2000);
+});
+
+window.addEventListener('offline', () => {
+    console.log('📴 Sin conexión. Modo offline activado.');
+    actualizarIndicadorCola();
+});
         const DEVICE_ID = 'DEV-' + Math.random().toString(36).substring(2, 8).toUpperCase();
         localStorage.setItem('deviceId', DEVICE_ID);
 
@@ -1083,13 +1358,111 @@ function mostrarProductosCaducados() {
             return `rgba(${r}, ${g}, ${b}, ${alpha})`;
         }
 
-        function verificarLicencia() {
-            console.log("📱 [LICENCIA] Móvil vinculado: licencia siempre activa");
-            licenciaActiva = true;
-            ocultarPantallaPago();
-            const demoBanner = $("demo-banner");
-            if (demoBanner) demoBanner.classList.add("hidden-view");
+       function verificarLicencia() {
+    console.log("🔐 [LICENCIA] Verificando licencia en Firebase...");
+    
+    // Si no hay tienda vinculada, no verificar
+    if (!TIENDA_ACTUAL) {
+        console.log("⚠️ No hay tienda vinculada, omitiendo verificación");
+        return;
+    }
+    
+    // ⭐ Si no hay internet, permitir acceso (modo offline)
+    if (!navigator.onLine) {
+        console.log("📴 Sin internet. Modo offline permitido.");
+        ocultarPantallaPago();
+        return;
+    }
+    
+    // ⭐ Consultar licencia en Firebase
+    const licenciaRef = firebase.database().ref(`tiendas/${TIENDA_ACTUAL.id}/licencia`);
+    
+    licenciaRef.on('value', (snapshot) => {
+        const licencia = snapshot.val();
+        
+        if (!licencia) {
+            console.log("⚠️ No existe nodo de licencia. Asumiendo activa...");
+            // Crear licencia por defecto
+            licenciaRef.set({
+                estado_licencia: "activa",
+                fecha_vencimiento: "2026-12-31"
+            });
+            return;
         }
+        // ⭐ VERIFICAR LICENCIA AL VOLVER A LA APP
+// Cuando el usuario vuelve de Mercado Pago, volvemos a verificar la licencia
+document.addEventListener('visibilitychange', () => {
+    // Solo cuando la app vuelve a estar visible
+    if (!document.hidden && TIENDA_ACTUAL) {
+        console.log('🔄 App volvió al foco. Re-verificando licencia...');
+        
+        // Verificar si la pantalla de pago está visible
+        const overlay = document.getElementById('payment-screen');
+        const pantallaBloqueada = overlay && !overlay.classList.contains('hidden-view');
+        
+        // Si ya estaba bloqueada, seguir bloqueada hasta verificar en Firebase
+        if (pantallaBloqueada) {
+            // Consultar Firebase UNA VEZ para ver si ya se activó
+            firebase.database().ref(`tiendas/${TIENDA_ACTUAL.id}/licencia`).once('value')
+                .then(snapshot => {
+                    const lic = snapshot.val();
+                    if (lic && (lic.estado_licencia === 'activa' || lic.estado_licencia === 'demo')) {
+                        // Verificar fecha
+                        const hoy = new Date();
+                        const vencimiento = new Date(lic.fecha_vencimiento + 'T23:59:59');
+                        if (hoy <= vencimiento) {
+                            console.log('✅ Licencia verificada como activa. Desbloqueando...');
+                            ocultarPantallaPago();
+                        } else {
+                            console.log('❌ Licencia vencida');
+                            mostrarPantallaPago('Tu licencia expiró el ' + lic.fecha_vencimiento);
+                        }
+                    } else {
+                        console.log('❌ Licencia inactiva, manteniendo bloqueo');
+                        mostrarPantallaPago('Tu licencia está inactiva. Contacta a soporte.');
+                    }
+                })
+                .catch(e => {
+                    console.warn('⚠️ Error verificando licencia al volver:', e);
+                });
+        }
+    }
+});
+        const estado = licencia.estado_licencia;
+        const fechaVenc = licencia.fecha_vencimiento;
+        
+        console.log("🔐 Estado:", estado, "| Vence:", fechaVenc);
+        
+        // ⭐ Verificar si está vencida por fecha
+        if (fechaVenc && estado === "activa") {
+            const hoy = new Date();
+            const vencimiento = new Date(fechaVenc + "T23:59:59");
+            
+            if (hoy > vencimiento) {
+                console.log("❌ Licencia vencida por fecha:", fechaVenc);
+                mostrarPantallaPago("Tu licencia expiró el " + fechaVenc);
+                return;
+            }
+        }
+        
+        // ⭐ Verificar estado
+        if (estado === "activa" || estado === "demo") {
+            console.log("✅ Licencia activa");
+            ocultarPantallaPago();
+        } else {
+            console.log("❌ Licencia inactiva:", estado);
+            mostrarPantallaPago("Tu licencia está inactiva. Contacta a soporte.");
+        }
+    });
+    
+    // ⭐ Timeout de seguridad: si Firebase no responde en 5s, permitir acceso
+    setTimeout(() => {
+        if (document.getElementById("payment-screen")?.classList.contains("hidden-view") === false) {
+            console.log("⏰ Firebase no respondió en 5s. Modo offline permitido.");
+            ocultarPantallaPago();
+        }
+    }, 5000);
+}
 
       function imprimirEtiquetaLocal(producto) {
     // ⭐ NORMALIZAR ACENTOS: JABÓN → JABON, NIÑO → NINO, etc.
@@ -1323,31 +1696,132 @@ function escapeHtml(texto) {
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#039;');
 }
-        function ocultarPantallaPago() {
-            const overlay = $("payment-screen");
-            if (overlay) overlay.classList.add("hidden-view");
-            const tiendaGuardada = localStorage.getItem('tiendaId');
-            if (tiendaGuardada && TIENDA_ACTUAL) {
-                $("app-main").classList.remove("hidden-view");
-            } else if (tiendaGuardada) {
-                const nombreGuardado = localStorage.getItem('tiendaNombre');
-                iniciarApp(tiendaGuardada, nombreGuardado || 'Mi Tienda');
-            } else {
-                $("link-screen").classList.remove("hidden-view");
+       function ocultarPantallaPago() {
+    // ⭐ PROTECCIÓN: NO ocultar si la licencia está inactiva
+    if (window._licenciaVerificada !== true) {
+        console.log('⛔ Intento de ocultar pantalla sin licencia verificada');
+        // Consultar Firebase
+        if (TIENDA_ACTUAL && navigator.onLine) {
+            firebase.database().ref(`tiendas/${TIENDA_ACTUAL.id}/licencia`).once('value')
+                .then(snapshot => {
+                    const lic = snapshot.val();
+                    if (lic && (lic.estado_licencia === 'activa' || lic.estado_licencia === 'demo')) {
+                        window._licenciaVerificada = true;
+                        // Continuar con el ocultamiento normal
+                        _ocultarPantallaPagoInterno();
+                    } else {
+                        console.log('❌ No se permite ocultar pantalla (licencia inactiva)');
+                        mostrarPantallaPago();
+                    }
+                });
+        } else {
+            // Sin internet: permitir
+            window._licenciaVerificada = true;
+            _ocultarPantallaPagoInterno();
+        }
+        return;
+    }
+    
+    // Si ya está verificada, ocultar
+    _ocultarPantallaPagoInterno();
+}
+
+// ⭐ Función interna que hace el ocultamiento real
+function _ocultarPantallaPagoInterno() {
+    const overlay = $("payment-screen");
+    if (overlay) {
+        overlay.classList.add("hidden-view");
+    }
+    
+    const tiendaGuardada = localStorage.getItem('tiendaId');
+    if (tiendaGuardada && TIENDA_ACTUAL) {
+        $("app-main").classList.remove("hidden-view");
+    } else if (tiendaGuardada) {
+        const nombreGuardado = localStorage.getItem('tiendaNombre');
+        iniciarApp(tiendaGuardada, nombreGuardado || 'Mi Tienda');
+    } else {
+        $("link-screen").classList.remove("hidden-view");
+    }
+}
+function abrirLinkDePagoMovil() {
+    console.log('💳 Abriendo link de pago...');
+    
+    const linkDePago = "https://mpago.la/1vYWcLR";
+    
+    // ⭐ MANTENER LA PANTALLA DE PAGO BLOQUEADA
+    // NO llamar a ocultarPantallaPago() aquí
+    
+    Swal.fire({
+        icon: 'info',
+        title: '💳 Completar Pago',
+        html: `
+            <div style="text-align:left;font-size:14px;">
+                <p style="margin-bottom:12px;">Se ha abierto una nueva ventana de Mercado Pago.</p>
+                <p style="margin-bottom:12px;"><b>⚠️ Importante:</b> Una vez completado el pago, tu licencia se activará automáticamente en unos segundos.</p>
+                <p style="font-size:12px;color:#6b7280;">Cuando termines, vuelve a esta app. Se verificará automáticamente.</p>
+            </div>
+        `,
+        confirmButtonText: '✅ Ya pagué, verificar',
+        confirmButtonColor: '#10b981',
+        showCancelButton: true,
+        cancelButtonText: 'Cancelar',
+        allowOutsideClick: false,
+        allowEscapeKey: false
+    }).then(result => {
+        if (result.isConfirmed) {
+            // ⭐ Verificar en Firebase si ya se activó
+            if (TIENDA_ACTUAL && firebase) {
+                Swal.fire({
+                    title: 'Verificando pago...',
+                    allowOutsideClick: false,
+                    didOpen: () => Swal.showLoading()
+                });
+                
+                firebase.database().ref(`tiendas/${TIENDA_ACTUAL.id}/licencia`).once('value')
+                    .then(snapshot => {
+                        const lic = snapshot.val();
+                        const hoy = new Date();
+                        
+                        if (lic && lic.estado_licencia === 'activa') {
+                            const vencimiento = new Date(lic.fecha_vencimiento + 'T23:59:59');
+                            if (hoy <= vencimiento) {
+                                window._licenciaVerificada = true;
+                                Swal.fire({
+                                    icon: 'success',
+                                    title: '🎉 ¡Licencia Activada!',
+                                    text: 'Ya puedes usar el sistema completo.',
+                                    confirmButtonColor: '#10b981'
+                                }).then(() => {
+                                    location.reload();
+                                });
+                                return;
+                            }
+                        }
+                        
+                        Swal.fire({
+                            icon: 'warning',
+                            title: 'Pago no confirmado aún',
+                            text: 'Espera unos minutos y vuelve a intentar. Si el problema persiste, contacta a soporte.',
+                            confirmButtonColor: '#f59e0b'
+                        });
+                    })
+                    .catch(err => {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: 'No se pudo verificar el pago: ' + err.message,
+                            confirmButtonColor: '#dc2626'
+                        });
+                    });
             }
         }
-
-        function abrirLinkDePagoMovil() {
-            window.open("https://mpago.la/1vYWcLR", "_blank");
-            Swal.fire({
-                icon: "info", title: "💳 Completar Pago",
-                html: '<div style="text-align:left;font-size:14px;"><p style="margin-bottom:10px;">Se ha abierto una nueva ventana para completar el pago.</p></div>',
-                confirmButtonText: "📱 Enviar comprobante",
-                confirmButtonColor: "#10b981",
-                showCancelButton: true, cancelButtonText: "Cerrar", cancelButtonColor: "#6b7280"
-            }).then((r) => { if (r.isConfirmed) enviarComprobanteWhatsAppMovil(); });
-        }
-
+    });
+    
+    // ⭐ Abrir Mercado Pago en una nueva ventana (DESPUÉS del Swal)
+    setTimeout(() => {
+        window.open(linkDePago, '_blank');
+    }, 100);
+}
         function enviarComprobanteWhatsAppMovil() {
             const nombreTienda = TIENDA_ACTUAL ? TIENDA_ACTUAL.nombre : (localStorage.getItem('tiendaNombre') || "MI TIENDA");
             const idTienda = TIENDA_ACTUAL ? TIENDA_ACTUAL.id : (localStorage.getItem('tiendaId') || "desconocido");
@@ -1387,44 +1861,119 @@ function escapeHtml(texto) {
             $('link-scanner-modal').classList.add('hidden-view');
             if (linkScanner && linkScanner.isScanning) linkScanner.stop().catch(() => {});
         }
-
-        async function procesarQRVinculacion(contenido) {
-            try {
-                const json = JSON.parse(contenido);
-                if (json.tipo !== 'vinculacion_pos') return Swal.fire('QR no válido', 'Este código no es de vinculación POS', 'warning');
-                const { tiendaId, tiendaNombre, token } = json;
-                Swal.fire({ title: 'Vinculando...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-                const snap = await firebase.database().ref(`vinculaciones/${token}`).get();
-                if (!snap.exists()) return Swal.fire('Código inválido', 'El código no existe', 'error');
-                const data = snap.val();
-                if (!data.activo) return Swal.fire('Código desactivado', 'Este código ya no es válido', 'error');
-                if (data.tiendaId !== tiendaId) return Swal.fire('Error', 'El código no coincide con la tienda', 'error');
-                
-                let deviceId = localStorage.getItem('deviceVinculadoId');
-                if (!deviceId) { deviceId = 'MOV-' + Math.random().toString(36).substring(2, 8).toUpperCase() + '-' + Date.now().toString(36).toUpperCase(); localStorage.setItem('deviceVinculadoId', deviceId); }
-                const dispSnap = await firebase.database().ref(`tiendas/${tiendaId}/dispositivosVinculados`).get();
-                const dispositivos = dispSnap.val() || {};
-                if (Object.keys(dispositivos).length >= 5 && !dispositivos[deviceId]) return Swal.fire({ icon: 'error', title: '⛔ Límite alcanzado', text: 'Esta tienda ya tiene 5 celulares vinculados.', confirmButtonColor: '#dc2626' });
-                
-                await firebase.database().ref(`tiendas/${tiendaId}/dispositivosVinculados/${deviceId}`).set({
-                    nombre: 'Celular ' + deviceId.slice(-4), fechaVinculacion: new Date().toISOString(),
-                    userAgent: navigator.userAgent.substring(0, 100), tokenUsado: token
-                });
-                await firebase.database().ref(`vinculaciones/${token}/usos`).set((data.usos || 0) + 1);
-                localStorage.setItem('tiendaId', tiendaId);
-                localStorage.setItem('tiendaNombre', tiendaNombre || 'Mi Tienda');
-                try {
-                    const tiendaSnap = await firebase.database().ref(`tiendas/${tiendaId}/miniSuperDb`).get();
-                    if (tiendaSnap.exists()) {
-                        const info = tiendaSnap.val();
-                        if (info.tiendaInfo && info.tiendaInfo.color) localStorage.setItem('tiendaColor', info.tiendaInfo.color);
-                        if (info.config && info.config.ownerPin) localStorage.setItem('ownerPin', info.config.ownerPin);
-                    }
-                } catch (e) {}
-                Swal.fire({ icon: 'success', title: '¡Vinculado!', html: '<div style="text-align:center;"><p>Conectado a:</p><p style="font-weight:900;color:var(--tienda-color);font-size:18px;">' + (tiendaNombre || tiendaId) + '</p></div>', timer: 2500, showConfirmButton: false })
-                    .then(() => iniciarApp(tiendaId, tiendaNombre));
-            } catch (e) { Swal.fire('Error', 'El QR no es válido: ' + e.message, 'error'); }
+async function procesarQRVinculacion(contenido) {
+    try {
+        let token, tiendaIdFromQR;
+        
+        // ⭐ Intentar parsear como JSON (formato viejo)
+        try {
+            const json = JSON.parse(contenido);
+            token = json.token || json.k;
+            tiendaIdFromQR = json.tiendaId || json.i;
+        } catch (e) {
+            // ⭐ No es JSON → asumir que es SOLO el token (formato nuevo)
+            token = contenido.trim();
+            tiendaIdFromQR = null;
         }
+        
+        if (!token) {
+            return Swal.fire('QR no válido', 'No contiene token de vinculación', 'warning');
+        }
+        
+        console.log('📱 Token recibido:', token);
+        
+        Swal.fire({ 
+            title: 'Vinculando...', 
+            allowOutsideClick: false, 
+            didOpen: () => Swal.showLoading() 
+        });
+        
+        // ⭐ Obtener datos desde Firebase usando el token
+        const snap = await firebase.database().ref(`vinculaciones/${token}`).get();
+        if (!snap.exists()) {
+            return Swal.fire('Código inválido', 'El código no existe o ya expiró', 'error');
+        }
+        
+        const data = snap.val();
+        if (!data.activo) {
+            return Swal.fire('Código desactivado', 'Este código ya no es válido', 'error');
+        }
+        
+        const tiendaId = data.tiendaId;
+        const tiendaNombre = data.tiendaNombre;
+        
+        // Verificar si el QR tenía tiendaId (formato viejo)
+        if (tiendaIdFromQR && tiendaIdFromQR !== tiendaId) {
+            return Swal.fire('Error', 'El código no coincide con la tienda', 'error');
+        }
+        
+        // ⭐ Registrar el dispositivo
+        let deviceId = localStorage.getItem('deviceVinculadoId');
+        if (!deviceId) {
+            deviceId = 'MOV-' + Math.random().toString(36).substring(2, 8).toUpperCase() + '-' + Date.now().toString(36).toUpperCase();
+            localStorage.setItem('deviceVinculadoId', deviceId);
+        }
+        
+        const dispSnap = await firebase.database().ref(`tiendas/${tiendaId}/dispositivosVinculados`).get();
+        const dispositivos = dispSnap.val() || {};
+        
+        if (Object.keys(dispositivos).length >= 5 && !dispositivos[deviceId]) {
+            return Swal.fire({
+                icon: 'error',
+                title: '⛔ Límite alcanzado',
+                text: 'Esta tienda ya tiene 5 celulares vinculados.',
+                confirmButtonColor: '#dc2626'
+            });
+        }
+        
+        await firebase.database().ref(`tiendas/${tiendaId}/dispositivosVinculados/${deviceId}`).set({
+            nombre: 'Celular ' + deviceId.slice(-4),
+            fechaVinculacion: new Date().toISOString(),
+            userAgent: navigator.userAgent.substring(0, 100),
+            tokenUsado: token
+        });
+        
+        await firebase.database().ref(`vinculaciones/${token}/usos`).set((data.usos || 0) + 1);
+        
+        localStorage.setItem('tiendaId', tiendaId);
+        localStorage.setItem('tiendaNombre', tiendaNombre || 'Mi Tienda');
+        
+        // ⭐ Descargar configuración de la tienda
+        try {
+            const tiendaSnap = await firebase.database().ref(`tiendas/${tiendaId}/miniSuperDb`).get();
+            if (tiendaSnap.exists()) {
+                const info = tiendaSnap.val();
+                if (info.tiendaInfo && info.tiendaInfo.color) localStorage.setItem('tiendaColor', info.tiendaInfo.color);
+                if (info.config && info.config.ownerPin) localStorage.setItem('ownerPin', info.config.ownerPin);
+                if (info.products) {
+                    // Guardar caché local
+                    try {
+                        localStorage.setItem('cache_productos_' + tiendaId, JSON.stringify(toArray(info.products)));
+                    } catch (e) { console.warn('Error guardando caché:', e); }
+                }
+            }
+        } catch (e) {
+            console.warn('⚠️ No se pudo descargar config:', e);
+        }
+        
+        Swal.fire({
+            icon: 'success',
+            title: '¡Vinculado!',
+            html: '<div style="text-align:center;">' +
+                '<p>Conectado a:</p>' +
+                '<p style="font-weight:900;color:var(--tienda-color);font-size:18px;">' + 
+                (tiendaNombre || tiendaId) + 
+                '</p>' +
+                '</div>',
+            timer: 2500,
+            showConfirmButton: false
+        }).then(() => iniciarApp(tiendaId, tiendaNombre));
+        
+    } catch (e) {
+        console.error('❌ Error procesando QR:', e);
+        Swal.fire('Error', 'El QR no es válido: ' + e.message, 'error');
+    }
+}
 
         function mostrarIngresoManual() { $('manual-input-area').classList.toggle('hidden-view'); }
 
@@ -1451,59 +2000,151 @@ function escapeHtml(texto) {
                     .then(() => iniciarApp(data.tiendaId, data.tiendaNombre));
             } catch (e) { Swal.fire('Error', e.message, 'error'); }
         }
-function iniciarApp(tiendaId, tiendaNombre) {
+   function iniciarApp(tiendaId, tiendaNombre) {
     // ⭐ Resetear alerta de caducidad al iniciar
     resetearAlertaCaducidad();
     
     TIENDA_ACTUAL = { id: tiendaId, nombre: tiendaNombre };
-            const colorGuardado = localStorage.getItem('tiendaColor');
-            if (colorGuardado) aplicarColorTienda(colorGuardado);
-            $('link-screen').classList.add('hidden-view');
-            $('app-main').classList.remove('hidden-view');
-            $('device-badge').classList.remove('hidden-view');
-            $('device-id').innerText = DEVICE_ID;
-            document.title = tiendaNombre || 'Carlitos Móvil';
-            $('header-title').innerText = tiendaNombre || 'Mi Tienda';
-            dbRef = firebase.database().ref(`tiendas/${tiendaId}/miniSuperDb`);
-            licenciaRef = firebase.database().ref(`tiendas/${tiendaId}/licencia`);
-            verificarLicencia();
-           dbRef.on('value', (snapshot) => {
-    const data = snapshot.val();
-    products = data && data.products ? toArray(data.products) : [];
+    const colorGuardado = localStorage.getItem('tiendaColor');
+    if (colorGuardado) aplicarColorTienda(colorGuardado);
+    $('link-screen').classList.add('hidden-view');
+    $('app-main').classList.remove('hidden-view');
+    $('device-badge').classList.remove('hidden-view');
+    $('device-id').innerText = DEVICE_ID;
+    document.title = tiendaNombre || 'Carlitos Móvil';
+    $('header-title').innerText = tiendaNombre || 'Mi Tienda';
     
-    // ⭐ SINCRONIZAR PIN DEL DUEÑO DESDE FIREBASE
-    if (data && data.config && data.config.ownerPin) {
-        const pinActual = localStorage.getItem('ownerPin');
-        const pinNuevo = data.config.ownerPin;
+    // ⭐ CARGAR PRODUCTOS DE LA CACHÉ LOCAL PRIMERO
+    try {
+        const cache = localStorage.getItem('cache_productos_' + tiendaId);
+        if (cache) {
+            products = JSON.parse(cache);
+            console.log('📦 Productos desde caché local:', products.length);
+        } else {
+            products = [];
+            console.log('📦 Sin caché local');
+        }
+    } catch (e) {
+        console.warn('⚠️ Error cargando caché:', e);
+        products = [];
+    }
+    
+    // ⭐ Actualizar la UI con los productos locales
+    if (products.length > 0) {
+        console.log('✅ Mostrando', products.length, 'productos desde caché');
+    }
+    
+    dbRef = firebase.database().ref(`tiendas/${tiendaId}/miniSuperDb`);
+    licenciaRef = firebase.database().ref(`tiendas/${tiendaId}/licencia`);
+    verificarLicencia();
+    
+    // ⭐ CONECTAR A FIREBASE (si hay internet)
+    dbRef.on('value', (snapshot) => {
+        const data = snapshot.val();
         
-        if (pinActual !== pinNuevo) {
-            console.log('🔑 PIN del dueño actualizado desde Firebase');
-            localStorage.setItem('ownerPin', pinNuevo);
+        // ⭐ Si Firebase responde, actualizar productos
+        if (data && data.products) {
+            let productosNube = toArray(data.products);
             
-            // Avisar al usuario solo si ya había un PIN diferente
-            if (pinActual && pinActual !== pinNuevo) {
-                mostrarToast('🔑 La contraseña del dueño ha sido actualizada', 'info');
+            // Filtrar productos válidos
+            productosNube = productosNube.filter(p => p && p.name);
+            
+            // Asegurar que cada producto tenga los campos correctos
+            productosNube = productosNube.map(p => ({
+                ...p,
+                stock: (p.stock !== undefined && p.stock !== null) ? Number(p.stock) : 0,
+                type: p.type || 'pieza',
+                cost: Number(p.cost) || 0,
+                price: Number(p.price) || 0,
+                margin: Number(p.margin) || 0
+            }));
+            
+            // ⭐ FUSIONAR con productos locales (por si hay operaciones offline pendientes)
+            const mapaProductos = new Map();
+            
+            // Primero agregar los de Firebase
+            productosNube.forEach(p => {
+                const key = p.code || String(p.id);
+                mapaProductos.set(key, p);
+            });
+            
+            // Luego fusionar con los locales (por si hay productos offline)
+            products.forEach(p => {
+                const key = p.code || String(p.id);
+                if (!mapaProductos.has(key)) {
+                    mapaProductos.set(key, p);
+                } else {
+                    // Existe en ambos → usar el más reciente
+                    const existente = mapaProductos.get(key);
+                    const fechaNube = new Date(existente.createdAt || 0).getTime();
+                    const fechaLocal = new Date(p.createdAt || 0).getTime();
+                    if (fechaLocal > fechaNube) {
+                        mapaProductos.set(key, p);
+                    }
+                }
+            });
+            
+            products = Array.from(mapaProductos.values());
+            console.log('📦 Productos fusionados:', products.length);
+            
+            // ⭐ Guardar la fusión en caché
+            try {
+                localStorage.setItem('cache_productos_' + tiendaId, JSON.stringify(products));
+            } catch (e) { console.warn('Error guardando caché:', e); }
+            
+            // ⭐ Refrescar la vista actual
+            if (!$('view-stock').classList.contains('hidden-view')) renderStockView();
+            if ($('inventory-search')?.value) buscarProductoInventario($('inventory-search').value);
+            if ($('scan-search')?.value) buscarProductoScan($('scan-search').value);
+            if ($('price-search')?.value) buscarProductoPrice($('price-search').value);
+            if ($('add-search')?.value) buscarProductoAdd($('add-search').value);
+        } else {
+            console.log('⚠️ Firebase no devolvió productos, usando caché local');
+        }
+        
+        // ⭐ Sincronizar PIN del dueño desde Firebase
+        if (data && data.config && data.config.ownerPin) {
+            const pinActual = localStorage.getItem('ownerPin');
+            const pinNuevo = data.config.ownerPin;
+            
+            if (pinActual !== pinNuevo) {
+                console.log('🔑 PIN del dueño actualizado desde Firebase');
+                localStorage.setItem('ownerPin', pinNuevo);
+                
+                if (pinActual && pinActual !== pinNuevo) {
+                    mostrarToast('🔑 La contraseña del dueño ha sido actualizada', 'info');
+                }
             }
         }
-    }
+        
+        // ⭐ Sincronizar color de tienda
+        if (data && data.tiendaInfo && data.tiendaInfo.color) {
+            const colorActual = localStorage.getItem('tiendaColor');
+            if (colorActual !== data.tiendaInfo.color) {
+                localStorage.setItem('tiendaColor', data.tiendaInfo.color);
+                aplicarColorTienda(data.tiendaInfo.color);
+            }
+        }
+        
+        // ⭐ Verificar alertas de caducidad cada vez que se actualizan los productos
+        setTimeout(() => checkExpiryAlerts(), 500);
+    });
     
-    if (data && data.tiendaInfo && data.tiendaInfo.color) {
-        const colorActual = localStorage.getItem('tiendaColor');
-        if (colorActual !== data.tiendaInfo.color) {
-            localStorage.setItem('tiendaColor', data.tiendaInfo.color);
-            aplicarColorTienda(data.tiendaInfo.color);
+    onCategoryChangeMobile();
+    toggleConfigMobile();
+    
+    // ⭐ Iniciar sistema de cola
+    actualizarIndicadorCola();
+    setTimeout(() => procesarCola(), 3000);
+    
+    // ⭐ Procesar cola cada 5 minutos si hay conexión
+    setInterval(() => {
+        if (navigator.onLine && syncQueue.length > 0) {
+            console.log('⏰ Verificación periódica de cola...');
+            procesarCola();
         }
-    }
-   if (!$('view-stock').classList.contains('hidden-view')) renderStockView();
-
-// ⭐ Verificar alertas cada vez que se actualizan los productos
-setTimeout(() => checkExpiryAlerts(), 500);
-});
-          verificarLicencia();
-onCategoryChangeMobile();
-toggleConfigMobile();
-
-        }
+    }, 5 * 60 * 1000);
+}
 
         window.addEventListener('DOMContentLoaded', () => {
             const tiendaGuardada = localStorage.getItem('tiendaId');
@@ -1559,30 +2200,74 @@ function volverAlMenu() {
     // ⭐ Verificar alertas de caducidad
     setTimeout(() => checkExpiryAlerts(), 300);
 }
-
-        function iniciarEscaneoContinuo(context) {
-            scannerContext = context || 'scan';
-            lastScannedCode = null; scanCooldown = false;
-            const titles = { 'scan': 'Enfoca el código de barras', 'price': 'Escanea el producto', 'add': 'Escanea el código' };
-            const hints = { 'scan': 'La cámara se cierra al detectar', 'price': 'La cámara se cierra al encontrar el producto', 'add': 'Solo escanea el código del producto' };
-            $('scanner-title').innerText = titles[scannerContext] || 'Enfoca el código';
-            $('scanner-hint').innerHTML = '<i class="fas fa-info-circle"></i> ' + (hints[scannerContext] || '');
-            $('scanner-modal').classList.remove('hidden-view');
-            setTimeout(() => {
-                if (!html5QrCode) html5QrCode = new Html5Qrcode("reader");
-                if (html5QrCode.isScanning) return;
-                html5QrCode.start({ facingMode: "environment" }, { fps: 15, qrbox: { width: 280, height: 200 } },
-                    (decodedText) => {
-                        if (scanCooldown) return;
-                        if (decodedText === lastScannedCode) return;
-                        lastScannedCode = decodedText; scanCooldown = true;
-                        vibrarYBeep();
-                        procesarEscaneo(decodedText);
-                    }, () => {}
-                ).catch(err => { Swal.fire('Error', 'No se pudo abrir la cámara: ' + err.message, 'error'); cerrarEscanerProducto(); });
-            }, 300);
-        }
-
+function iniciarEscaneoContinuo(context) {
+    scannerContext = context || 'scan';
+    lastScannedCode = null; 
+    scanCooldown = false;
+    
+    // ⭐ AVISO SI NO HAY PRODUCTOS EN CACHÉ
+    if (products.length === 0) {
+        console.warn('⚠️ No hay productos en caché. El escaneo no encontrará nada.');
+        
+        Swal.fire({
+            icon: 'warning',
+            title: 'Sin productos cargados',
+            html: '<div style="text-align:left;font-size:13px;">' +
+                '<p style="margin-bottom:10px;">No hay productos en la caché local.</p>' +
+                '<p style="font-size:12px;color:#6b7280;">Esto pasa cuando:</p>' +
+                '<ul style="font-size:12px;color:#6b7280;padding-left:20px;margin:8px 0;">' +
+                '<li>Es la primera vez que abres la app</li>' +
+                '<li>Nunca te has conectado a internet</li>' +
+                '<li>La caché se borró</li>' +
+                '</ul>' +
+                '<p style="font-size:12px;color:#f59e0b;margin-top:10px;">' +
+                '<i class="fas fa-wifi"></i> Conéctate a internet al menos una vez para cargar los productos.' +
+                '</p>' +
+                '</div>',
+            confirmButtonText: 'Entendido',
+            confirmButtonColor: '#f59e0b'
+        });
+        
+        // No bloquear, dejar que abra la cámara igual
+    }
+    
+    const titles = { 
+        'scan': 'Enfoca el código de barras', 
+        'price': 'Escanea el producto', 
+        'add': 'Escanea el código' 
+    };
+    const hints = { 
+        'scan': 'La cámara se cierra al detectar', 
+        'price': 'La cámara se cierra al encontrar el producto', 
+        'add': 'Solo escanea el código del producto' 
+    };
+    
+    $('scanner-title').innerText = titles[scannerContext] || 'Enfoca el código';
+    $('scanner-hint').innerHTML = '<i class="fas fa-info-circle"></i> ' + (hints[scannerContext] || '');
+    $('scanner-modal').classList.remove('hidden-view');
+    
+    setTimeout(() => {
+        if (!html5QrCode) html5QrCode = new Html5Qrcode("reader");
+        if (html5QrCode.isScanning) return;
+        
+        html5QrCode.start(
+            { facingMode: "environment" }, 
+            { fps: 15, qrbox: { width: 280, height: 200 } },
+            (decodedText) => {
+                if (scanCooldown) return;
+                if (decodedText === lastScannedCode) return;
+                lastScannedCode = decodedText; 
+                scanCooldown = true;
+                vibrarYBeep();
+                procesarEscaneo(decodedText);
+            }, 
+            () => {}
+        ).catch(err => { 
+            Swal.fire('Error', 'No se pudo abrir la cámara: ' + err.message, 'error'); 
+            cerrarEscanerProducto(); 
+        });
+    }, 300);
+}
         function cerrarEscanerProducto() {
             $('scanner-modal').classList.add('hidden-view');
             if (html5QrCode && html5QrCode.isScanning) html5QrCode.stop().catch(() => {});
@@ -1655,7 +2340,6 @@ function procesarEscaneo(code) {
     if (scannerContext === 'add') {
         cerrarEscanerProducto();
         setTimeout(() => {
-            // Si el producto ya existe, avisar
             if (product) {
                 $('add-search-results').innerHTML = '<div class="card" style="background:#fef3c7; border-color:#fcd34d; padding:14px;">' +
                     '<p style="font-weight:800; color:#92400e; margin:0 0 10px 0; font-size:13px;">' +
@@ -1699,33 +2383,157 @@ function procesarEscaneo(code) {
         function mostrarFormularioCambioPrecio(product) {
             $('price-result').innerHTML = '<div class="product-info-card"><span class="badge ok">Producto encontrado</span><div class="name">' + product.name + '</div><div class="row"><span class="label"><i class="fas fa-dollar-sign"></i> Precio actual</span><span class="value price">$' + Number(product.price).toFixed(2) + '</span></div></div><div class="card"><h2><i class="fas fa-edit"></i> Nuevo Precio</h2><label class="section-label">Nuevo precio</label><input type="number" id="new-price-input" step="0.01" class="input-field" style="text-align:center; font-size:26px; font-weight:900;" value="' + Number(product.price).toFixed(2) + '"><label class="section-label"><i class="fas fa-lock"></i> PIN del dueño</label><input type="password" id="pin-price-input" placeholder="••••" class="input-field" style="text-align:center; font-size:22px; letter-spacing:6px;"><button class="action-btn amber" onclick="confirmarCambioPrecio(\'' + product.id + '\')" style="margin-top:8px;"><i class="fas fa-check"></i> Confirmar</button></div>';
         }
-
-        function confirmarCambioPrecio(productId) {
-            const newPrice = parseFloat($('new-price-input').value);
-            const pin = $('pin-price-input').value.trim();
-            if (!newPrice || newPrice <= 0) return mostrarToast('Ingresa un precio válido', 'error');
-            if (!pin) return mostrarToast('Ingresa el PIN del dueño', 'error');
-            const ownerPin = localStorage.getItem('ownerPin') || 'admin123';
-            if (pin !== ownerPin) { mostrarToast('PIN incorrecto', 'error'); vibrarError(); return; }
-            let productoActualizado = null;
-            dbRef.child('products').once('value').then(snap => {
-                let arr = snap.val() || [];
-                if (!Array.isArray(arr)) arr = Object.values(arr);
-                const idx = arr.findIndex(p => String(p.id) === String(productId));
-                if (idx === -1) throw new Error('Producto no encontrado');
-                arr[idx].price = newPrice;
-                productoActualizado = arr[idx];
-                return dbRef.child('products').set(arr);
-            }).then(() => {
-                vibrarYBeep();
-                Swal.fire({
-                    icon: 'success', title: '✅ Precio actualizado',
-                    html: '<div style="text-align:left;font-size:14px;"><p><b>' + productoActualizado.name + '</b></p><p style="margin-bottom:12px;"><b>Nuevo precio:</b> <span style="font-size:20px;color:var(--tienda-color);font-weight:900;">$' + newPrice.toFixed(2) + '</span></p><p style="font-size:12px;color:#6b7280;">¿Imprimir etiqueta?</p></div>',
-                    showCancelButton: true, confirmButtonText: '🖨️ Imprimir', cancelButtonText: 'No', confirmButtonColor: '#3b82f6', cancelButtonColor: '#6b7280'
-                }).then((result) => { if (result.isConfirmed) imprimirEtiquetaLocal(productoActualizado); });
-                $('price-result').innerHTML = '';
-            }).catch(err => mostrarToast('Error: ' + err.message, 'error'));
+function confirmarCambioPrecio(productId) {
+    const newPrice = parseFloat($('new-price-input').value);
+    const pin = $('pin-price-input').value.trim();
+    if (!newPrice || newPrice <= 0) return mostrarToast('Ingresa un precio válido', 'error');
+    if (!pin) return mostrarToast('Ingresa el PIN del dueño', 'error');
+    const ownerPin = localStorage.getItem('ownerPin') || 'admin123';
+    if (pin !== ownerPin) { 
+        mostrarToast('PIN incorrecto', 'error'); 
+        vibrarError(); 
+        return; 
+    }
+    
+    // ⭐ Encontrar producto localmente
+    const idxLocal = products.findIndex(p => String(p.id) === String(productId));
+    if (idxLocal === -1) return mostrarToast('Producto no encontrado', 'error');
+    
+    const productoLocal = products[idxLocal];
+    
+    // ⭐ Preparar data para la operación
+    const dataOperacion = {
+        productId: productId,
+        nuevoPrecio: newPrice,
+        nombre: productoLocal.name
+    };
+    
+    // ⭐ Actualizar localmente PRIMERO
+    products[idxLocal].price = newPrice;
+    try {
+        localStorage.setItem('cache_productos_' + TIENDA_ACTUAL.id, JSON.stringify(products));
+    } catch (e) { console.warn('Error guardando caché:', e); }
+    
+    // ⭐ Verificar conexión
+    if (!navigator.onLine) {
+        // 📴 Sin internet → guardar en cola
+        console.log('📴 Sin conexión, guardando cambio de precio en cola...');
+        guardarEnCola('cambiar_precio', dataOperacion);
+        
+        vibrarYBeep();
+        Swal.fire({
+            icon: 'info',
+            title: '📴 Guardado sin conexión',
+            html: '<div style="text-align:left;font-size:14px;">' +
+                '<p><b>' + escapeHtml(productoLocal.name) + '</b></p>' +
+                '<p style="margin-bottom:12px;"><b>Nuevo precio:</b> <span style="font-size:20px;color:var(--tienda-color);font-weight:900;">$' + newPrice.toFixed(2) + '</span></p>' +
+                '<p style="font-size:12px;color:#f59e0b;"><i class="fas fa-wifi-slash"></i> Se enviará cuando vuelva el internet</p>' +
+                '<p style="font-size:12px;color:#6b7280;">¿Imprimir etiqueta?</p>' +
+                '</div>',
+            showCancelButton: true,
+            confirmButtonText: '🖨️ Imprimir',
+            cancelButtonText: 'No',
+            confirmButtonColor: '#3b82f6',
+            cancelButtonColor: '#6b7280'
+        }).then((r) => {
+            if (r.isConfirmed) imprimirEtiquetaLocal(products[idxLocal]);
+        });
+        
+        $('price-result').innerHTML = '';
+        return;
+    }
+    
+    // ✅ Hay internet → subir directamente con timeout de seguridad
+    Swal.fire({ title: 'Guardando...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+    
+    let respuestaRecibida = false;
+    const timeoutId = setTimeout(() => {
+        if (!respuestaRecibida) {
+            console.warn('⏰ Firebase no respondió en 8s. Guardando en cola...');
+            Swal.close();
+            guardarEnCola('cambiar_precio', dataOperacion);
+            
+            vibrarYBeep();
+            Swal.fire({
+                icon: 'info',
+                title: '📴 Guardado sin conexión',
+                html: '<div style="text-align:left;font-size:14px;">' +
+                    '<p><b>' + escapeHtml(productoLocal.name) + '</b></p>' +
+                    '<p style="margin-bottom:12px;"><b>Nuevo precio:</b> <span style="font-size:20px;color:var(--tienda-color);font-weight:900;">$' + newPrice.toFixed(2) + '</span></p>' +
+                    '<p style="font-size:12px;color:#f59e0b;"><i class="fas fa-cloud-upload-alt"></i> Se sincronizará automáticamente</p>' +
+                    '</div>',
+                timer: 3000,
+                showConfirmButton: false
+            });
+            
+            $('price-result').innerHTML = '';
         }
+    }, 8000);
+    
+    // ⭐ Intentar subir a Firebase
+    try {
+        dbRef.child('products').once('value').then(snap => {
+            let arr = snap.val() || [];
+            if (!Array.isArray(arr)) arr = Object.values(arr);
+            const idx = arr.findIndex(p => String(p.id) === String(productId));
+            if (idx === -1) throw new Error('Producto no encontrado');
+            arr[idx].price = newPrice;
+            return dbRef.child('products').set(arr);
+        }).then(() => {
+            respuestaRecibida = true;
+            clearTimeout(timeoutId);
+            console.log('✅ Precio actualizado en Firebase');
+            
+            vibrarYBeep();
+            Swal.fire({
+                icon: 'success',
+                title: '✅ Precio actualizado',
+                html: '<div style="text-align:left;font-size:14px;">' +
+                    '<p><b>' + escapeHtml(productoLocal.name) + '</b></p>' +
+                    '<p style="margin-bottom:12px;"><b>Nuevo precio:</b> <span style="font-size:20px;color:var(--tienda-color);font-weight:900;">$' + newPrice.toFixed(2) + '</span></p>' +
+                    '<p style="font-size:12px;color:#6b7280;">¿Imprimir etiqueta?</p>' +
+                    '</div>',
+                showCancelButton: true,
+                confirmButtonText: '🖨️ Imprimir',
+                cancelButtonText: 'No',
+                confirmButtonColor: '#3b82f6',
+                cancelButtonColor: '#6b7280'
+            }).then((result) => {
+                if (result.isConfirmed) imprimirEtiquetaLocal(products[idxLocal]);
+            });
+            
+            $('price-result').innerHTML = '';
+        }).catch(err => {
+            respuestaRecibida = true;
+            clearTimeout(timeoutId);
+            console.warn('⚠️ Error subiendo, guardando en cola:', err.message);
+            Swal.close();
+            guardarEnCola('cambiar_precio', dataOperacion);
+            
+            vibrarYBeep();
+            Swal.fire({
+                icon: 'info',
+                title: '📴 Guardado en cola',
+                html: '<div style="text-align:left;font-size:14px;">' +
+                    '<p><b>' + escapeHtml(productoLocal.name) + '</b></p>' +
+                    '<p><b>Nuevo precio:</b> <span style="font-size:20px;color:var(--tienda-color);font-weight:900;">$' + newPrice.toFixed(2) + '</span></p>' +
+                    '<p style="font-size:12px;color:#f59e0b;"><i class="fas fa-cloud-upload-alt"></i> Se sincronizará automáticamente</p>' +
+                    '</div>',
+                timer: 3000,
+                showConfirmButton: false
+            });
+            
+            $('price-result').innerHTML = '';
+        });
+    } catch (e) {
+        respuestaRecibida = true;
+        clearTimeout(timeoutId);
+        console.error('❌ Error crítico:', e.message);
+        Swal.close();
+        guardarEnCola('cambiar_precio', dataOperacion);
+        $('price-result').innerHTML = '';
+    }
+}
 
         async function autocompletarDesdePrecioCheck(codigo) {
             const nameInput = $('p-name-mob');
@@ -1779,71 +2587,202 @@ function procesarEscaneo(code) {
             else if (type === 'cajapieza') { $('cajapieza-fields-mob').classList.remove('hidden'); normalStock.classList.add('hidden'); if (category === 'Cerveza') $('beer-fields-mob').classList.remove('hidden'); }
             else { normalStock.classList.remove('hidden'); if (category === 'Cerveza') $('beer-fields-mob').classList.remove('hidden'); }
         }
-
-        function guardarProductoMobile() {
-            if (!dbRef) return mostrarToast('No hay tienda vinculada', 'error');
-            const name = $('p-name-mob').value.trim();
-            if (!name) return mostrarToast('El nombre es obligatorio', 'error');
-            const type = $('p-type-mob').value;
-            const category = $('p-cat-mob').value;
-            const code = $('p-code-mob').value.trim();
-            const cost = parseFloat($('p-cost-mob').value) || 0;
-            const margin = parseFloat($('p-margin-mob').value) || 0;
-            const price = parseFloat($('p-price-main-mob').value) || 0;
-            if (price <= 0) return mostrarToast('El precio debe ser mayor a 0', 'error');
-            const productData = { code, name: name.toUpperCase(), cost, margin, price, category, type, createdBy: DEVICE_ID, createdAt: new Date().toISOString() };
-            const expiry = $('p-expiry-mob').value;
-            if (category === 'Lácteos' && expiry) productData.expiryDate = expiry;
-            if (type === 'cajetilla') {
-                const boxPrice = parseFloat($('p-price-box-mob').value) || 0;
-                const piecePrice = parseFloat($('p-piece-price-mob').value) || 0;
-                const piecesPerBox = parseInt($('p-pieces-per-box-cigar-mob').value) || 20;
-                const stockBoxes = parseInt($('p-stock-boxes-cigar-mob').value) || 0;
-                const stockLoose = parseInt($('p-stock-loose-cigar-mob').value) || 0;
-                if (boxPrice <= 0 || piecePrice <= 0) return mostrarToast('Ingresa precio de cajetilla y cigarro', 'error');
-                productData.price = boxPrice; productData.piecePrice = piecePrice; productData.piecesPerBox = piecesPerBox; productData.stock = (stockBoxes * piecesPerBox) + stockLoose;
-            } else if (type === 'cajapieza') {
-                const piecesPerBox = parseInt($('p-pieces-per-box-mob').value) || 24;
-                const stockBoxes = parseInt($('p-stock-boxes-mob').value) || 0;
-                const stockLoose = parseInt($('p-stock-loose-mob').value) || 0;
-                productData.piecesPerBox = piecesPerBox; productData.stock = (stockBoxes * piecesPerBox) + stockLoose;
-                if (category === 'Cerveza') { const priceSix = parseFloat($('p-price-six-mob').value) || 0; const priceCaja = parseFloat($('p-price-24-mob').value) || 0; productData.priceSix = priceSix || (price * 6); productData.priceCaja = priceCaja || (price * piecesPerBox); }
-            } else {
-                const stock = parseFloat($('p-stock-mob').value) || 0;
-                productData.stock = stock;
-                if (category === 'Cerveza') { const priceSix = parseFloat($('p-price-six-mob').value) || 0; const priceCaja = parseFloat($('p-price-24-mob').value) || 0; productData.priceSix = priceSix || (price * 6); productData.priceCaja = priceCaja || (price * 24); }
-            }
-            if (code && products.some(p => p.code === code)) return mostrarToast('Código duplicado', 'error');
-            Swal.fire({
-                title: '🔐 Autorización', text: 'Ingresa el PIN del dueño',
-                input: 'password',
-                inputAttributes: { autocapitalize: 'off', autocorrect: 'off', style: 'color:#000!important; background:#fff!important; border:2px solid #cbd5e1!important; border-radius:12px!important; padding:14px!important; text-align:center; font-size:20px; letter-spacing:6px;' },
-                showCancelButton: true, confirmButtonText: '✅ Autorizar', cancelButtonText: 'Cancelar',
-                confirmButtonColor: '#10b981',
-                preConfirm: (pin) => {
-                    const ownerPin = localStorage.getItem('ownerPin') || 'admin123';
-                    if (pin !== ownerPin) { Swal.showValidationMessage('❌ PIN incorrecto'); return false; }
-                    return true;
-                }
-            }).then(result => {
-                if (!result.isConfirmed) return;
-                Swal.fire({ title: 'Guardando...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-                productData.id = Date.now();
-                dbRef.child('products').push(productData).then(() => {
-                    vibrarYBeep();
-                    Swal.fire({
-                        icon: 'success', title: '✅ Producto guardado',
-                        html: '<div style="text-align:left;font-size:14px;"><p><b>' + productData.name + '</b></p><p style="margin-bottom:12px;"><b>Precio:</b> <span style="font-size:20px;color:var(--tienda-color);font-weight:900;">$' + productData.price.toFixed(2) + '</span></p><p style="font-size:12px;color:#6b7280;">¿Imprimir etiqueta?</p></div>',
-                        showCancelButton: true, confirmButtonText: '🖨️ Imprimir', cancelButtonText: 'No', confirmButtonColor: '#3b82f6', cancelButtonColor: '#6b7280'
-                    }).then((r) => { if (r.isConfirmed) imprimirEtiquetaLocal(productData); });
-                    ['p-name-mob','p-code-mob','p-cost-mob','p-margin-mob','p-price-main-mob','p-stock-mob','p-price-box-mob','p-piece-price-mob','p-stock-boxes-cigar-mob','p-stock-loose-cigar-mob','p-price-six-mob','p-price-24-mob','p-stock-boxes-mob','p-stock-loose-mob','p-expiry-mob'].forEach(id => { const el = $(id); if (el) el.value = ''; });
-                    $('p-pieces-per-box-cigar-mob').value = 20;
-                    $('p-pieces-per-box-mob').value = 24;
-                   $('add-form-container').classList.add('hidden-view');
-               
-                }).catch(err => Swal.fire({ icon: 'error', title: 'Error al guardar', text: err.message, confirmButtonColor: '#dc2626' }));
-            });
+  function guardarProductoMobile() {
+    if (!dbRef) return mostrarToast('No hay tienda vinculada', 'error');
+    
+    const name = $('p-name-mob').value.trim();
+    if (!name) return mostrarToast('El nombre es obligatorio', 'error');
+    
+    const type = $('p-type-mob').value;
+    const category = $('p-cat-mob').value;
+    const code = $('p-code-mob').value.trim();
+    const cost = parseFloat($('p-cost-mob').value) || 0;
+    const margin = parseFloat($('p-margin-mob').value) || 0;
+    const price = parseFloat($('p-price-main-mob').value) || 0;
+    if (price <= 0) return mostrarToast('El precio debe ser mayor a 0', 'error');
+    
+    const productData = { 
+        code, 
+        name: name.toUpperCase(), 
+        cost, 
+        margin, 
+        price, 
+        category, 
+        type, 
+        createdBy: DEVICE_ID, 
+        createdAt: new Date().toISOString() 
+    };
+    
+    const expiry = $('p-expiry-mob').value;
+    if (category === 'Lácteos' && expiry) productData.expiryDate = expiry;
+    
+    if (type === 'cajetilla') {
+        const boxPrice = parseFloat($('p-price-box-mob').value) || 0;
+        const piecePrice = parseFloat($('p-piece-price-mob').value) || 0;
+        const piecesPerBox = parseInt($('p-pieces-per-box-cigar-mob').value) || 20;
+        const stockBoxes = parseInt($('p-stock-boxes-cigar-mob').value) || 0;
+        const stockLoose = parseInt($('p-stock-loose-cigar-mob').value) || 0;
+        if (boxPrice <= 0 || piecePrice <= 0) return mostrarToast('Ingresa precio de cajetilla y cigarro', 'error');
+        productData.price = boxPrice;
+        productData.piecePrice = piecePrice;
+        productData.piecesPerBox = piecesPerBox;
+        productData.stock = (stockBoxes * piecesPerBox) + stockLoose;
+    } else if (type === 'cajapieza') {
+        const piecesPerBox = parseInt($('p-pieces-per-box-mob').value) || 24;
+        const stockBoxes = parseInt($('p-stock-boxes-mob').value) || 0;
+        const stockLoose = parseInt($('p-stock-loose-mob').value) || 0;
+        productData.piecesPerBox = piecesPerBox;
+        productData.stock = (stockBoxes * piecesPerBox) + stockLoose;
+        if (category === 'Cerveza') {
+            const priceSix = parseFloat($('p-price-six-mob').value) || 0;
+            const priceCaja = parseFloat($('p-price-24-mob').value) || 0;
+            productData.priceSix = priceSix || (price * 6);
+            productData.priceCaja = priceCaja || (price * piecesPerBox);
         }
+    } else {
+        const stock = parseFloat($('p-stock-mob').value) || 0;
+        productData.stock = stock;
+        if (category === 'Cerveza') {
+            const priceSix = parseFloat($('p-price-six-mob').value) || 0;
+            const priceCaja = parseFloat($('p-price-24-mob').value) || 0;
+            productData.priceSix = priceSix || (price * 6);
+            productData.priceCaja = priceCaja || (price * 24);
+        }
+    }
+    
+    if (code && products.some(p => p.code === code)) return mostrarToast('Código duplicado', 'error');
+    
+    Swal.fire({
+        title: '🔐 Autorización',
+        text: 'Ingresa el PIN del dueño',
+        input: 'password',
+        inputAttributes: { 
+            autocapitalize: 'off', 
+            autocorrect: 'off', 
+            style: 'color:#000!important; background:#fff!important; border:2px solid #cbd5e1!important; border-radius:12px!important; padding:14px!important; text-align:center; font-size:20px; letter-spacing:6px;' 
+        },
+        showCancelButton: true,
+        confirmButtonText: '✅ Autorizar',
+        cancelButtonText: 'Cancelar',
+        confirmButtonColor: '#10b981',
+        preConfirm: (pin) => {
+            const ownerPin = localStorage.getItem('ownerPin') || 'admin123';
+            if (pin !== ownerPin) {
+                Swal.showValidationMessage('❌ PIN incorrecto');
+                return false;
+            }
+            return true;
+        }
+    }).then(result => {
+        if (!result.isConfirmed) return;
+        
+        // ⭐ ASIGNAR ID ÚNICO
+        productData.id = Date.now();
+        
+        // ⭐ FUNCIÓN PARA LIMPIAR EL FORMULARIO
+        const limpiarFormulario = () => {
+            ['p-name-mob','p-code-mob','p-cost-mob','p-margin-mob','p-price-main-mob','p-stock-mob','p-price-box-mob','p-piece-price-mob','p-stock-boxes-cigar-mob','p-stock-loose-cigar-mob','p-price-six-mob','p-price-24-mob','p-stock-boxes-mob','p-stock-loose-mob','p-expiry-mob'].forEach(id => {
+                const el = $(id);
+                if (el) el.value = '';
+            });
+            $('p-pieces-per-box-cigar-mob').value = 20;
+            $('p-pieces-per-box-mob').value = 24;
+            $('add-form-container').classList.add('hidden-view');
+        };
+        
+        // ⭐ FUNCIÓN PARA AGREGAR LOCALMENTE
+        const agregarLocalmente = () => {
+            products.push(productData);
+            try {
+                localStorage.setItem('cache_productos_' + TIENDA_ACTUAL.id, JSON.stringify(products));
+            } catch (e) { 
+                console.warn('Error guardando caché:', e); 
+            }
+        };
+        
+        // ⭐ FUNCIÓN PARA MOSTRAR ÉXITO
+        const mostrarExito = (offline) => {
+            vibrarYBeep();
+            Swal.fire({
+                icon: offline ? 'info' : 'success',
+                title: offline ? '📴 Guardado sin conexión' : '✅ Producto guardado',
+                html: '<div style="text-align:left;font-size:14px;">' +
+                    '<p><b>' + escapeHtml(productData.name) + '</b></p>' +
+                    '<p style="margin-bottom:12px;"><b>Precio:</b> <span style="font-size:20px;color:var(--tienda-color);font-weight:900;">$' + productData.price.toFixed(2) + '</span></p>' +
+                    (offline ? '<p style="font-size:12px;color:#f59e0b;"><i class="fas fa-wifi-slash"></i> Se enviará cuando vuelva el internet</p>' : '') +
+                    '<p style="font-size:12px;color:#6b7280;">¿Imprimir etiqueta?</p>' +
+                    '</div>',
+                showCancelButton: true,
+                confirmButtonText: '🖨️ Imprimir',
+                cancelButtonText: 'No',
+                confirmButtonColor: '#3b82f6',
+                cancelButtonColor: '#6b7280'
+            }).then((r) => {
+                if (r.isConfirmed) imprimirEtiquetaLocal(productData);
+            });
+            limpiarFormulario();
+            setTimeout(() => checkExpiryAlerts(), 1000);
+        };
+        
+        // ⭐ VERIFICAR CONEXIÓN REAL ANTES DE GUARDAR
+        // Si navigator.onLine es false, guardar directo en cola
+        if (!navigator.onLine) {
+            console.log('📴 Sin conexión detectada, guardando en cola...');
+            guardarEnCola('agregar_producto', productData);
+            agregarLocalmente();
+            mostrarExito(true);
+            return;
+        }
+        
+        // ✅ Hay internet (según navigator.onLine)
+        // Mostrar spinner con timeout de seguridad
+        Swal.fire({ 
+            title: 'Guardando...', 
+            allowOutsideClick: false, 
+            didOpen: () => Swal.showLoading() 
+        });
+        
+        // ⭐ TIMEOUT DE SEGURIDAD: Si Firebase no responde en 8 segundos, guardar en cola
+        let respuestaRecibida = false;
+        const timeoutId = setTimeout(() => {
+            if (!respuestaRecibida) {
+                console.warn('⏰ Firebase no respondió en 8s. Guardando en cola...');
+                Swal.close();
+                guardarEnCola('agregar_producto', productData);
+                agregarLocalmente();
+                mostrarExito(true);
+            }
+        }, 8000);
+        
+        // ⭐ INTENTAR SUBIR A FIREBASE
+        try {
+            dbRef.child('products').push(productData).then(() => {
+                respuestaRecibida = true;
+                clearTimeout(timeoutId);
+                console.log('✅ Producto subido a Firebase');
+                agregarLocalmente();
+                mostrarExito(false);
+            }).catch(err => {
+                respuestaRecibida = true;
+                clearTimeout(timeoutId);
+                console.warn('⚠️ Error subiendo, guardando en cola:', err.message);
+                Swal.close();
+                guardarEnCola('agregar_producto', productData);
+                agregarLocalmente();
+                mostrarExito(true);
+            });
+        } catch (e) {
+            // ⭐ ERROR SÍNCRONO (por si push lanza error antes de devolver promesa)
+            respuestaRecibida = true;
+            clearTimeout(timeoutId);
+            console.error('❌ Error crítico:', e.message);
+            Swal.close();
+            guardarEnCola('agregar_producto', productData);
+            agregarLocalmente();
+            mostrarExito(true);
+        }
+    });
+}
 // ═══════════════════════════════════════════════════════════
 // BUSCADOR EN VISTA "ESCANEAR"
 // ═══════════════════════════════════════════════════════════
@@ -2028,79 +2967,188 @@ function prepararNuevoProducto(nombreBuscado) {
         }
     }, 300);
 }
-        function ajustarStockMovil(productId, cantidad) {
-            const cantidadNum = Number(cantidad);
-            if (isNaN(cantidadNum) || cantidadNum === 0) return;
-            Swal.fire({
-                title: '🔐 Autorización', text: 'Ingresa el PIN del dueño',
-                input: 'password',
-                inputAttributes: { autocapitalize: 'off', autocorrect: 'off', style: 'color:#000!important; background:#fff!important; border:2px solid #cbd5e1!important; border-radius:12px!important; padding:14px!important; text-align:center; font-size:20px; letter-spacing:6px;' },
-                showCancelButton: true, confirmButtonText: '✅ Autorizar', cancelButtonText: 'Cancelar',
-                confirmButtonColor: '#10b981',
-                preConfirm: (pin) => {
-                    const ownerPin = localStorage.getItem('ownerPin') || 'admin123';
-                    if (pin !== ownerPin) { Swal.showValidationMessage('❌ PIN incorrecto'); vibrarError(); return false; }
-                    return true;
+function ajustarStockMovil(productId, cantidad) {
+    const cantidadNum = Number(cantidad);
+    if (isNaN(cantidadNum) || cantidadNum === 0) return;
+    
+    // ⭐ BUSCAR PRODUCTO LOCAL PRIMERO (no depende de dbRef)
+    const idxLocal = products.findIndex(p => String(p.id) === String(productId));
+    if (idxLocal === -1) {
+        return mostrarToast('Producto no encontrado', 'error');
+    }
+    
+    const productoLocal = products[idxLocal];
+    const nuevoStock = Math.max(0, (Number(productoLocal.stock) || 0) + cantidadNum);
+    
+    Swal.fire({
+        title: '🔐 Autorización',
+        text: 'Ingresa el PIN del dueño',
+        input: 'password',
+        inputAttributes: {
+            autocapitalize: 'off',
+            autocorrect: 'off',
+            style: 'color:#000!important; background:#fff!important; border:2px solid #cbd5e1!important; border-radius:12px!important; padding:14px!important; text-align:center; font-size:20px; letter-spacing:6px;'
+        },
+        showCancelButton: true,
+        confirmButtonText: '✅ Autorizar',
+        cancelButtonText: 'Cancelar',
+        confirmButtonColor: '#10b981',
+        preConfirm: (pin) => {
+            const ownerPin = localStorage.getItem('ownerPin') || 'admin123';
+            if (pin !== ownerPin) {
+                Swal.showValidationMessage('❌ PIN incorrecto');
+                vibrarError();
+                return false;
+            }
+            return true;
+        }
+    }).then((result) => {
+        if (!result.isConfirmed) return;
+        
+        // ⭐ ACTUALIZAR LOCALMENTE SIEMPRE (independiente de internet)
+        products[idxLocal].stock = nuevoStock;
+        
+        // Guardar en caché local
+        try {
+            localStorage.setItem('cache_productos_' + TIENDA_ACTUAL.id, JSON.stringify(products));
+            console.log('💾 Stock actualizado en caché local:', productoLocal.name, '→', nuevoStock);
+        } catch (e) {
+            console.warn('⚠️ Error guardando caché:', e);
+        }
+        
+        // ⭐ REFRESCAR LA UI INMEDIATAMENTE
+        const busqueda = $('inventory-search')?.value || '';
+        if (busqueda) {
+            buscarProductoInventario(busqueda);
+        }
+        
+        // ⭐ VERIFICAR SI HAY INTERNET Y dbRef
+        const hayInternetReal = navigator.onLine && dbRef;
+        
+        if (hayInternetReal) {
+            // ✅ Intentar subir a Firebase con timeout
+            console.log('🌐 Subiendo a Firebase...');
+            
+            let respuestaRecibida = false;
+            const timeoutId = setTimeout(() => {
+                if (!respuestaRecibida) {
+                    console.warn('⏰ Firebase no respondió en 6s. Guardando en cola...');
+                    guardarEnCola('modificar_stock', {
+                        productId: productId,
+                        nuevoStock: nuevoStock,
+                        nombre: productoLocal.name
+                    });
+                    vibrarYBeep();
+                    Swal.fire({
+                        icon: 'info',
+                        title: '📴 Guardado en cola',
+                        html: '<div style="text-align:left;font-size:14px;">' +
+                            '<p><b>' + escapeHtml(productoLocal.name) + '</b></p>' +
+                            '<p><b>Nuevo stock:</b> <span style="font-size:22px;color:var(--tienda-color);font-weight:900;">' + nuevoStock + '</span></p>' +
+                            '<p style="font-size:12px;color:#f59e0b;"><i class="fas fa-cloud-upload-alt"></i> Se sincronizará automáticamente</p>' +
+                            '</div>',
+                        timer: 3000,
+                        showConfirmButton: false
+                    });
                 }
-            }).then((result) => {
-                if (!result.isConfirmed) return;
+            }, 6000);
+            
+            try {
                 dbRef.child('products').once('value').then(snap => {
                     let arr = snap.val() || [];
                     if (!Array.isArray(arr)) arr = Object.values(arr);
                     const idx = arr.findIndex(p => String(p.id) === String(productId));
                     if (idx === -1) throw new Error('Producto no encontrado');
-                    const producto = arr[idx];
-                    const nuevoStock = Math.max(0, (Number(producto.stock) || 0) + cantidadNum);
                     arr[idx].stock = nuevoStock;
-                    return dbRef.child('products').set(arr).then(() => ({ producto, nuevoStock }));
-                }).then(({ producto, nuevoStock }) => {
+                    return dbRef.child('products').set(arr);
+                }).then(() => {
+                    respuestaRecibida = true;
+                    clearTimeout(timeoutId);
+                    console.log('✅ Stock actualizado en Firebase');
+                    
                     vibrarYBeep();
-                    let mensaje = cantidadNum > 0 ? `Se agregaron ${Math.abs(cantidadNum)} unidades` : `Se quitaron ${Math.abs(cantidadNum)} unidades`;
-                    Swal.fire({ icon: 'success', title: '✅ Stock Actualizado', html: '<div style="text-align:left;font-size:14px;"><p><b>' + producto.name + '</b></p><p style="font-size:13px;color:#6b7280;">' + mensaje + '</p><p><b>Nuevo stock:</b> <span style="font-size:22px;color:var(--tienda-color);font-weight:900;">' + nuevoStock + '</span></p></div>', timer: 1800, showConfirmButton: false });
-                    const busqueda = $('inventory-search').value;
-                    buscarProductoInventario(busqueda);
-                }).catch(err => mostrarToast('Error: ' + err.message, 'error'));
+                    Swal.fire({
+                        icon: 'success',
+                        title: '✅ Stock Actualizado',
+                        html: '<div style="text-align:left;font-size:14px;">' +
+                            '<p><b>' + escapeHtml(productoLocal.name) + '</b></p>' +
+                            '<p><b>Nuevo stock:</b> <span style="font-size:22px;color:var(--tienda-color);font-weight:900;">' + nuevoStock + '</span></p>' +
+                            '</div>',
+                        timer: 1800,
+                        showConfirmButton: false
+                    });
+                }).catch(err => {
+                    respuestaRecibida = true;
+                    clearTimeout(timeoutId);
+                    console.warn('⚠️ Error subiendo, guardando en cola:', err.message);
+                    
+                    guardarEnCola('modificar_stock', {
+                        productId: productId,
+                        nuevoStock: nuevoStock,
+                        nombre: productoLocal.name
+                    });
+                    
+                    vibrarYBeep();
+                    Swal.fire({
+                        icon: 'info',
+                        title: '📴 Guardado en cola',
+                        html: '<div style="text-align:left;font-size:14px;">' +
+                            '<p><b>' + escapeHtml(productoLocal.name) + '</b></p>' +
+                            '<p><b>Nuevo stock:</b> <span style="font-size:22px;color:var(--tienda-color);font-weight:900;">' + nuevoStock + '</span></p>' +
+                            '<p style="font-size:12px;color:#f59e0b;"><i class="fas fa-cloud-upload-alt"></i> Se sincronizará automáticamente</p>' +
+                            '</div>',
+                        timer: 3000,
+                        showConfirmButton: false
+                    });
+                });
+            } catch (e) {
+                respuestaRecibida = true;
+                clearTimeout(timeoutId);
+                console.error('❌ Error crítico:', e.message);
+                
+                guardarEnCola('modificar_stock', {
+                    productId: productId,
+                    nuevoStock: nuevoStock,
+                    nombre: productoLocal.name
+                });
+                
+                vibrarYBeep();
+                Swal.fire({
+                    icon: 'info',
+                    title: '📴 Guardado en cola',
+                    html: '<div style="text-align:left;font-size:14px;">' +
+                        '<p><b>' + escapeHtml(productoLocal.name) + '</b></p>' +
+                        '<p><b>Nuevo stock:</b> <span style="font-size:22px;color:var(--tienda-color);font-weight:900;">' + nuevoStock + '</span></p>' +
+                        '</div>',
+                    timer: 3000,
+                    showConfirmButton: false
+                });
+            }
+        } else {
+            // 📴 Sin internet → guardar en cola SIN depender de dbRef
+            console.log('📴 Sin conexión, guardando en cola...');
+            
+            guardarEnCola('modificar_stock', {
+                productId: productId,
+                nuevoStock: nuevoStock,
+                nombre: productoLocal.name
+            });
+            
+            vibrarYBeep();
+            Swal.fire({
+                icon: 'info',
+                title: '📴 Guardado sin conexión',
+                html: '<div style="text-align:left;font-size:14px;">' +
+                    '<p><b>' + escapeHtml(productoLocal.name) + '</b></p>' +
+                    '<p><b>Nuevo stock:</b> <span style="font-size:22px;color:var(--tienda-color);font-weight:900;">' + nuevoStock + '</span></p>' +
+                    '<p style="font-size:12px;color:#f59e0b;"><i class="fas fa-wifi-slash"></i> Sin conexión - Se enviará cuando vuelva el internet</p>' +
+                    '</div>',
+                timer: 3500,
+                showConfirmButton: false
             });
         }
-
-        function ajustarStockManual(productId) {
-            Swal.fire({
-                title: '📦 Ajuste Manual',
-                html: '<div style="text-align:left;font-size:14px;"><p style="margin-bottom:12px;color:#6b7280;">Ingresa la cantidad exacta (usa negativos para restar).</p><input type="number" id="swal-ajuste-manual" class="swal2-input" placeholder="Ej: 50 o -10" style="text-align:center;font-size:20px;font-weight:900;color:#000;background:#fff;border:2px solid #cbd5e1;"></div>',
-                showCancelButton: true, confirmButtonText: '✅ Aplicar', cancelButtonText: 'Cancelar', confirmButtonColor: '#10b981', cancelButtonColor: '#6b7280',
-                preConfirm: () => {
-                    const val = parseInt($('swal-ajuste-manual').value);
-                    if (isNaN(val) || val === 0) { Swal.showValidationMessage('Ingresa una cantidad válida'); return false; }
-                    return val;
-                }
-            }).then(result => { if (result.isConfirmed) ajustarStockMovil(productId, result.value); });
-        }
-
-        function abrirEscanerInventario() {
-            $('inventory-scanner-modal').classList.remove('hidden-view');
-            setTimeout(() => {
-                if (!inventoryScanner) inventoryScanner = new Html5Qrcode("reader-inventory");
-                if (inventoryScanner.isScanning) return;
-                inventoryScanner.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 280, height: 200 } },
-                    (decodedText) => {
-                        cerrarEscanerInventario(); vibrarYBeep();
-                        const code = decodedText.trim();
-const cleanCode = code.replace(/[^0-9]/g, '');
-const product = products.find(p => {
-    if (!p.code) return false;
-    const pCode = String(p.code).replace(/[^0-9]/g, '');
-    if (pCode === cleanCode) return true;
-    const minLen = Math.min(pCode.length, cleanCode.length);
-    for (let len = Math.min(minLen, 9); len >= 4; len--) {
-        if (pCode.slice(-len) === cleanCode.slice(-len)) return true;
-    }
-    return false;
-});
-if (product) { $('inventory-search').value = product.name; buscarProductoInventario(product.name); }  }, () => {}
-                ).catch(err => { Swal.fire('Error', 'No se pudo abrir la cámara: ' + err.message, 'error'); cerrarEscanerInventario(); });
-            }, 300);
-        }
-
+    });
+}
         function cerrarEscanerInventario() {
             $('inventory-scanner-modal').classList.add('hidden-view');
             if (inventoryScanner && inventoryScanner.isScanning) inventoryScanner.stop().catch(() => {});
@@ -2249,7 +3297,29 @@ if (product) {
         function mostrarToast(mensaje, tipo = 'info') {
             Swal.fire({ toast: true, position: 'top-end', icon: tipo, title: mensaje, showConfirmButton: false, timer: 1800, timerProgressBar: true });
         }
+// ⭐ BLOQUEAR NAVEGACIÓN Y ATAJOS QUE PERMITAN ESCAPAR
+document.addEventListener('keydown', (e) => {
+    const overlay = document.getElementById('payment-screen');
+    if (overlay && !overlay.classList.contains('hidden-view')) {
+        // Bloquear Escape, F5, Ctrl+R, etc.
+        if (e.key === 'Escape' || e.key === 'F5' || (e.ctrlKey && e.key === 'r')) {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('⛔ Navegación bloqueada en pantalla de pago');
+        }
+    }
+}, true);
 
+// ⭐ BLOQUEAR BOTÓN ATRÁS DEL NAVEGADOR/ANDROID
+window.addEventListener('popstate', (e) => {
+    const overlay = document.getElementById('payment-screen');
+    if (overlay && !overlay.classList.contains('hidden-view')) {
+        history.pushState(null, null, location.href);
+        console.log('⛔ Botón atrás bloqueado en pantalla de pago');
+    }
+});
+// Push inicial para activar el bloqueo
+history.pushState(null, null, location.href);
         console.log('✅ Carlitos Móvil v7 - Con cámara en Ver Stock');
         console.log('📱 Device ID:', DEVICE_ID);
     </script>
