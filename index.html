@@ -894,6 +894,7 @@
         let scanCooldown = false;
         let licenciaActiva = true;
         let stockFilterActual = 'all';
+        window._licenciaVerificada = false; 
 // ═══════════════════════════════════════════════════════════
 // 📴 SISTEMA DE MODO OFFLINE CON COLA DE SINCRONIZACIÓN
 // ═══════════════════════════════════════════════════════════
@@ -1357,113 +1358,147 @@ function mostrarProductosCaducados() {
             const b = num & 255;
             return `rgba(${r}, ${g}, ${b}, ${alpha})`;
         }
-
-       function verificarLicencia() {
+function verificarLicencia() {
     console.log("🔐 [LICENCIA] Verificando licencia en Firebase...");
     
-    // Si no hay tienda vinculada, no verificar
     if (!TIENDA_ACTUAL) {
         console.log("⚠️ No hay tienda vinculada, omitiendo verificación");
         return;
     }
     
-    // ⭐ Si no hay internet, permitir acceso (modo offline)
+    // ⭐ SI NO HAY INTERNET → usar caché local
     if (!navigator.onLine) {
-        console.log("📴 Sin internet. Modo offline permitido.");
-        ocultarPantallaPago();
+        console.log("📴 Sin internet. Verificando con caché local...");
+        verificarLicenciaOffline();
         return;
     }
     
-    // ⭐ Consultar licencia en Firebase
-    const licenciaRef = firebase.database().ref(`tiendas/${TIENDA_ACTUAL.id}/licencia`);
+    // ⭐ CONSULTAR FIREBASE
+    licenciaRef = firebase.database().ref(`tiendas/${TIENDA_ACTUAL.id}/licencia`);
+    
+    let respuestaRecibida = false;
     
     licenciaRef.on('value', (snapshot) => {
+        respuestaRecibida = true;
         const licencia = snapshot.val();
         
         if (!licencia) {
-            console.log("⚠️ No existe nodo de licencia. Asumiendo activa...");
-            // Crear licencia por defecto
+            console.log("⚠️ No existe nodo de licencia. Creando por defecto...");
             licenciaRef.set({
                 estado_licencia: "activa",
                 fecha_vencimiento: "2026-12-31"
             });
             return;
         }
-        // ⭐ VERIFICAR LICENCIA AL VOLVER A LA APP
-// Cuando el usuario vuelve de Mercado Pago, volvemos a verificar la licencia
-document.addEventListener('visibilitychange', () => {
-    // Solo cuando la app vuelve a estar visible
-    if (!document.hidden && TIENDA_ACTUAL) {
-        console.log('🔄 App volvió al foco. Re-verificando licencia...');
         
-        // Verificar si la pantalla de pago está visible
-        const overlay = document.getElementById('payment-screen');
-        const pantallaBloqueada = overlay && !overlay.classList.contains('hidden-view');
-        
-        // Si ya estaba bloqueada, seguir bloqueada hasta verificar en Firebase
-        if (pantallaBloqueada) {
-            // Consultar Firebase UNA VEZ para ver si ya se activó
-            firebase.database().ref(`tiendas/${TIENDA_ACTUAL.id}/licencia`).once('value')
-                .then(snapshot => {
-                    const lic = snapshot.val();
-                    if (lic && (lic.estado_licencia === 'activa' || lic.estado_licencia === 'demo')) {
-                        // Verificar fecha
-                        const hoy = new Date();
-                        const vencimiento = new Date(lic.fecha_vencimiento + 'T23:59:59');
-                        if (hoy <= vencimiento) {
-                            console.log('✅ Licencia verificada como activa. Desbloqueando...');
-                            ocultarPantallaPago();
-                        } else {
-                            console.log('❌ Licencia vencida');
-                            mostrarPantallaPago('Tu licencia expiró el ' + lic.fecha_vencimiento);
-                        }
-                    } else {
-                        console.log('❌ Licencia inactiva, manteniendo bloqueo');
-                        mostrarPantallaPago('Tu licencia está inactiva. Contacta a soporte.');
-                    }
-                })
-                .catch(e => {
-                    console.warn('⚠️ Error verificando licencia al volver:', e);
-                });
-        }
-    }
-});
         const estado = licencia.estado_licencia;
         const fechaVenc = licencia.fecha_vencimiento;
         
         console.log("🔐 Estado:", estado, "| Vence:", fechaVenc);
         
-        // ⭐ Verificar si está vencida por fecha
+        // ⭐ GUARDAR CACHÉ LOCAL (para modo offline)
+        try {
+            localStorage.setItem('licenciaCache_' + TIENDA_ACTUAL.id, JSON.stringify({
+                estado_licencia: estado,
+                fecha_vencimiento: fechaVenc,
+                ultima_verificacion: new Date().toISOString()
+            }));
+            console.log("💾 Caché de licencia guardado");
+        } catch (e) {
+            console.warn("⚠️ No se pudo guardar caché:", e);
+        }
+        
+        // ⭐ VERIFICAR VENCIMIENTO POR FECHA
         if (fechaVenc && estado === "activa") {
             const hoy = new Date();
             const vencimiento = new Date(fechaVenc + "T23:59:59");
             
             if (hoy > vencimiento) {
                 console.log("❌ Licencia vencida por fecha:", fechaVenc);
+                window._licenciaVerificada = false;
                 mostrarPantallaPago("Tu licencia expiró el " + fechaVenc);
                 return;
             }
         }
         
-        // ⭐ Verificar estado
+        // ⭐ VERIFICAR ESTADO
         if (estado === "activa" || estado === "demo") {
             console.log("✅ Licencia activa");
-            ocultarPantallaPago();
+            window._licenciaVerificada = true;
+            _ocultarPantallaPagoInterno();
         } else {
             console.log("❌ Licencia inactiva:", estado);
+            window._licenciaVerificada = false;
             mostrarPantallaPago("Tu licencia está inactiva. Contacta a soporte.");
         }
     });
     
-    // ⭐ Timeout de seguridad: si Firebase no responde en 5s, permitir acceso
+    // ⭐ TIMEOUT: si Firebase no responde en 5s, usar caché local
     setTimeout(() => {
-        if (document.getElementById("payment-screen")?.classList.contains("hidden-view") === false) {
-            console.log("⏰ Firebase no respondió en 5s. Modo offline permitido.");
-            ocultarPantallaPago();
+        if (!respuestaRecibida) {
+            console.log("⏰ Firebase no respondió en 5s. Usando caché local...");
+            verificarLicenciaOffline();
         }
-    }, 5000);
+    }, 3000);
 }
-
+function verificarLicenciaOffline() {
+    console.log("📴 [LICENCIA] Modo offline: usando caché local...");
+    
+    if (!TIENDA_ACTUAL) {
+        mostrarPantallaPago("No hay tienda configurada.");
+        return;
+    }
+    
+    const cacheRaw = localStorage.getItem('licenciaCache_' + TIENDA_ACTUAL.id);
+    
+    // ⭐ Si NUNCA se ha verificado online, bloquear por seguridad
+    if (!cacheRaw) {
+        console.log("❌ Sin caché de licencia. Bloqueando por seguridad.");
+        window._licenciaVerificada = false;
+        mostrarPantallaPago(
+            "No se puede verificar la licencia sin internet. " +
+            "Conéctate a internet para validar tu suscripción."
+        );
+        return;
+    }
+    
+    try {
+        const cache = JSON.parse(cacheRaw);
+        const fechaVenc = cache.fecha_vencimiento;
+        const estado = cache.estado_licencia;
+        
+        console.log("📋 Caché:", estado, "| Vence:", fechaVenc);
+        
+        // ⭐ VERIFICAR VENCIMIENTO USANDO FECHA GUARDADA
+        if (fechaVenc) {
+            const hoy = new Date();
+            const vencimiento = new Date(fechaVenc + "T23:59:59");
+            
+            if (hoy > vencimiento) {
+                console.log("❌ Licencia vencida (según caché):", fechaVenc);
+                window._licenciaVerificada = false;
+                mostrarPantallaPago(
+                    "Tu licencia expiró el " + fechaVenc + 
+                    ". Conéctate a internet para renovarla."
+                );
+                return;
+            }
+        }
+        
+        if (estado === "activa" || estado === "demo") {
+            console.log("✅ Licencia activa (caché offline)");
+            window._licenciaVerificada = true;
+            _ocultarPantallaPagoInterno();
+        } else {
+            window._licenciaVerificada = false;
+            mostrarPantallaPago("Tu licencia está inactiva. Contacta a soporte.");
+        }
+    } catch (e) {
+        console.error("Error leyendo caché de licencia:", e);
+        window._licenciaVerificada = false;
+        mostrarPantallaPago("Error al validar licencia. Contacta a soporte.");
+    }
+}
       function imprimirEtiquetaLocal(producto) {
     // ⭐ NORMALIZAR ACENTOS: JABÓN → JABON, NIÑO → NINO, etc.
     let nombre = (producto.name || "PRODUCTO").toUpperCase();
@@ -1696,37 +1731,15 @@ function escapeHtml(texto) {
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#039;');
 }
-       function ocultarPantallaPago() {
-    // ⭐ PROTECCIÓN: NO ocultar si la licencia está inactiva
+     function ocultarPantallaPago() {
+    // ⭐ Si la licencia no está verificada, NO ocultar
     if (window._licenciaVerificada !== true) {
-        console.log('⛔ Intento de ocultar pantalla sin licencia verificada');
-        // Consultar Firebase
-        if (TIENDA_ACTUAL && navigator.onLine) {
-            firebase.database().ref(`tiendas/${TIENDA_ACTUAL.id}/licencia`).once('value')
-                .then(snapshot => {
-                    const lic = snapshot.val();
-                    if (lic && (lic.estado_licencia === 'activa' || lic.estado_licencia === 'demo')) {
-                        window._licenciaVerificada = true;
-                        // Continuar con el ocultamiento normal
-                        _ocultarPantallaPagoInterno();
-                    } else {
-                        console.log('❌ No se permite ocultar pantalla (licencia inactiva)');
-                        mostrarPantallaPago();
-                    }
-                });
-        } else {
-            // Sin internet: permitir
-            window._licenciaVerificada = true;
-            _ocultarPantallaPagoInterno();
-        }
+        console.log('⛔ No se puede ocultar pantalla: licencia no verificada');
         return;
     }
-    
-    // Si ya está verificada, ocultar
     _ocultarPantallaPagoInterno();
 }
 
-// ⭐ Función interna que hace el ocultamiento real
 function _ocultarPantallaPagoInterno() {
     const overlay = $("payment-screen");
     if (overlay) {
@@ -2966,6 +2979,229 @@ function prepararNuevoProducto(nombreBuscado) {
             mostrarToast('📝 Completa los datos del producto', 'info');
         }
     }, 300);
+}
+// ═══════════════════════════════════════════════════════════
+// ⚙️ AJUSTE MANUAL DE STOCK
+// ═══════════════════════════════════════════════════════════
+async function ajustarStockManual(productId) {
+    const idxLocal = products.findIndex(p => String(p.id) === String(productId));
+    if (idxLocal === -1) {
+        return mostrarToast('Producto no encontrado', 'error');
+    }
+    
+    const producto = products[idxLocal];
+    const stockActual = Number(producto.stock) || 0;
+    
+    // ⭐ Modal para ingresar nuevo stock
+    const { value: formValues } = await Swal.fire({
+        title: '⚙️ Ajuste Manual',
+        html: `
+            <div style="text-align:left; font-size:14px;">
+                <p style="margin:0 0 6px 0;"><b>${escapeHtml(producto.name)}</b></p>
+                <p style="font-size:12px; color:#64748b; margin:0 0 14px 0;">
+                    ${producto.category || 'N/A'} · ${producto.code || 'S/C'}
+                </p>
+                <div style="background:#f1f5f9; border-radius:10px; padding:12px; margin-bottom:16px;">
+                    <div style="display:flex; justify-content:space-between; font-size:13px;">
+                        <span style="color:#64748b;">Stock actual:</span>
+                        <b>${stockActual} pzs</b>
+                    </div>
+                </div>
+                
+                <label style="display:block; font-weight:800; font-size:11px; color:#64748b; text-transform:uppercase; margin-bottom:6px;">
+                    Nuevo stock
+                </label>
+                <input id="manual-stock-input" type="number" min="0" step="1"
+                       value="${stockActual}"
+                       style="width:100%; padding:14px; font-size:22px; font-weight:900; text-align:center;
+                              border:2px solid #cbd5e1; border-radius:12px; outline:none;">
+                
+                <div style="margin-top:16px;">
+                    <label style="display:block; font-weight:800; font-size:11px; color:#64748b; text-transform:uppercase; margin-bottom:6px;">
+                        Motivo (opcional)
+                    </label>
+                    <select id="manual-stock-reason"
+                            style="width:100%; padding:12px; font-size:14px; font-weight:700;
+                                   border:2px solid #cbd5e1; border-radius:12px; outline:none;">
+                        <option value="Ajuste manual">🔧 Ajuste manual</option>
+                        <option value="Merma">🗑️ Merma / Dañado</option>
+                        <option value="Robo">🚨 Robo / Faltante</option>
+                        <option value="Reconteo">📋 Reconteo físico</option>
+                        <option value="Devolución">↩️ Devolución proveedor</option>
+                        <option value="Otro">❓ Otro</option>
+                    </select>
+                </div>
+            </div>
+        `,
+        showCancelButton: true,
+        confirmButtonText: '✅ Guardar',
+        cancelButtonText: 'Cancelar',
+        confirmButtonColor: '#10b981',
+        cancelButtonColor: '#6b7280',
+        allowOutsideClick: false,
+        didOpen: () => {
+            const input = document.getElementById('manual-stock-input');
+            if (input) { input.focus(); input.select(); }
+        },
+        preConfirm: () => {
+            const nuevoStock = parseInt(document.getElementById('manual-stock-input').value);
+            const motivo = document.getElementById('manual-stock-reason').value;
+            
+            if (isNaN(nuevoStock) || nuevoStock < 0) {
+                Swal.showValidationMessage('❌ Ingresa un número válido (0 o mayor)');
+                return false;
+            }
+            
+            return { nuevoStock, motivo };
+        }
+    });
+    
+    if (!formValues) return;
+    
+    const { nuevoStock, motivo } = formValues;
+    
+    if (nuevoStock === stockActual) {
+        return mostrarToast('El stock no cambió', 'info');
+    }
+    
+    // ⭐ Pedir PIN del dueño
+    const pinResult = await Swal.fire({
+        title: '🔐 Autorización',
+        text: 'Ingresa el PIN del dueño para confirmar',
+        input: 'password',
+        inputAttributes: {
+            autocapitalize: 'off',
+            autocorrect: 'off',
+            style: 'color:#000!important; background:#fff!important; border:2px solid #cbd5e1!important; border-radius:12px!important; padding:14px!important; text-align:center; font-size:20px; letter-spacing:6px;'
+        },
+        showCancelButton: true,
+        confirmButtonText: '✅ Autorizar',
+        cancelButtonText: 'Cancelar',
+        confirmButtonColor: '#10b981',
+        preConfirm: (pin) => {
+            const ownerPin = localStorage.getItem('ownerPin') || 'admin123';
+            if (pin !== ownerPin) {
+                Swal.showValidationMessage('❌ PIN incorrecto');
+                vibrarError();
+                return false;
+            }
+            return true;
+        }
+    });
+    
+    if (!pinResult.isConfirmed) return;
+    
+    // ⭐ Actualizar localmente
+    products[idxLocal].stock = nuevoStock;
+    products[idxLocal].lastAdjustment = {
+        date: new Date().toISOString(),
+        from: stockActual,
+        to: nuevoStock,
+        reason: motivo,
+        by: DEVICE_ID
+    };
+    
+    // Guardar en caché local
+    try {
+        localStorage.setItem('cache_productos_' + TIENDA_ACTUAL.id, JSON.stringify(products));
+        console.log('💾 Ajuste manual guardado en caché:', producto.name, stockActual, '→', nuevoStock);
+    } catch (e) {
+        console.warn('⚠️ Error guardando caché:', e);
+    }
+    
+    // ⭐ Refrescar UI
+    const busqueda = $('inventory-search')?.value || '';
+    if (busqueda) {
+        buscarProductoInventario(busqueda);
+    }
+    
+    // ⭐ Guardar en Firebase (con cola si falla)
+    const dataOperacion = {
+        productId: productId,
+        nuevoStock: nuevoStock,
+        nombre: producto.name,
+        motivo: motivo,
+        stockAnterior: stockActual
+    };
+    
+    if (!navigator.onLine || !dbRef) {
+        // 📴 Sin internet → cola
+        guardarEnCola('modificar_stock', dataOperacion);
+        
+        vibrarYBeep();
+        return Swal.fire({
+            icon: 'info',
+            title: '📴 Guardado sin conexión',
+            html: `<div style="text-align:left;font-size:14px;">
+                <p><b>${escapeHtml(producto.name)}</b></p>
+                <p><b>Stock:</b> <span style="text-decoration:line-through;color:#94a3b8;">${stockActual}</span> → 
+                   <span style="font-size:20px;color:var(--tienda-color);font-weight:900;">${nuevoStock}</span></p>
+                <p style="font-size:12px;color:#f59e0b;"><i class="fas fa-wifi-slash"></i> Se enviará cuando vuelva el internet</p>
+            </div>`,
+            timer: 3000,
+            showConfirmButton: false
+        });
+    }
+    
+    // ✅ Con internet → subir a Firebase
+    Swal.fire({ title: 'Guardando...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+    
+    let respuestaRecibida = false;
+    const timeoutId = setTimeout(() => {
+        if (!respuestaRecibida) {
+            Swal.close();
+            guardarEnCola('modificar_stock', dataOperacion);
+            vibrarYBeep();
+            Swal.fire({
+                icon: 'info',
+                title: '📴 Guardado en cola',
+                html: `<p><b>${escapeHtml(producto.name)}</b></p><p>Stock: ${nuevoStock}</p>`,
+                timer: 3000,
+                showConfirmButton: false
+            });
+        }
+    }, 8000);
+    
+    try {
+        const snap = await dbRef.child('products').once('value');
+        let arr = snap.val() || [];
+        if (!Array.isArray(arr)) arr = Object.values(arr);
+        const idx = arr.findIndex(p => String(p.id) === String(productId));
+        if (idx === -1) throw new Error('Producto no encontrado en Firebase');
+        arr[idx].stock = nuevoStock;
+        arr[idx].lastAdjustment = products[idxLocal].lastAdjustment;
+        await dbRef.child('products').set(arr);
+        
+        respuestaRecibida = true;
+        clearTimeout(timeoutId);
+        
+        vibrarYBeep();
+        Swal.fire({
+            icon: 'success',
+            title: '✅ Stock actualizado',
+            html: `<div style="text-align:left;font-size:14px;">
+                <p><b>${escapeHtml(producto.name)}</b></p>
+                <p><b>Stock:</b> <span style="text-decoration:line-through;color:#94a3b8;">${stockActual}</span> → 
+                   <span style="font-size:20px;color:#10b981;font-weight:900;">${nuevoStock}</span></p>
+                <p style="font-size:12px;color:#64748b;">Motivo: ${motivo}</p>
+            </div>`,
+            timer: 2200,
+            showConfirmButton: false
+        });
+    } catch (err) {
+        respuestaRecibida = true;
+        clearTimeout(timeoutId);
+        console.warn('⚠️ Error subiendo, guardando en cola:', err.message);
+        guardarEnCola('modificar_stock', dataOperacion);
+        vibrarYBeep();
+        Swal.fire({
+            icon: 'info',
+            title: '📴 Guardado en cola',
+            text: 'Se sincronizará automáticamente.',
+            timer: 3000,
+            showConfirmButton: false
+        });
+    }
 }
 function ajustarStockMovil(productId, cantidad) {
     const cantidadNum = Number(cantidad);
